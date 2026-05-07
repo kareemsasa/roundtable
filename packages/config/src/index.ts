@@ -1,2 +1,2 @@
-// @roundtable/config — config schema, loading, defaults
-export {};
+export { getDefaultDataDir } from "./defaults.js";
+export * from "./schema.js";
