@@ -61,9 +61,7 @@ export class StewardAdapter implements AgentAdapter {
 
 function buildStewardPrompt(input: AgentInput): string {
   const contextMd = renderContextPackMarkdown(input.contextPack);
-  const transcriptText = input.transcript
-    .map((t) => `${t.participant}: ${t.content}`)
-    .join("\n\n");
+  const transcriptText = input.transcript.map((t) => `${t.participant}: ${t.content}`).join("\n\n");
 
   const parts: string[] = [];
   parts.push("# Context Pack");
