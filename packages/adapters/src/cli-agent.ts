@@ -9,6 +9,8 @@ export type SpawnOptions = {
   maxOutputBytes: number;
   gracefulShutdownMs: number;
   signal?: AbortSignal;
+  /** Content to write to the child process stdin before closing it. */
+  stdin?: string;
 };
 
 export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<AgentEvent> {
@@ -20,11 +22,18 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
     stdio: ["pipe", "pipe", "pipe"],
   });
 
+  // Handle spawn failure (e.g., ENOENT when command does not exist).
+  // We track spawn errors so we can yield them after the process closes.
+  let spawnError: Error | undefined;
+  child.on("error", (err: Error) => {
+    spawnError = err;
+  });
+
   // Yield invocation_started immediately
   yield {
     type: "invocation_started",
     command,
-    pid: child.pid!,
+    pid: child.pid ?? -1,
     timestamp: new Date().toISOString(),
   };
 
@@ -37,6 +46,14 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
     args,
     envKeys,
   };
+
+  // Write to stdin if provided, then close it
+  if (child.stdin) {
+    if (options.stdin) {
+      child.stdin.write(options.stdin);
+    }
+    child.stdin.end();
+  }
 
   // Collect stdout/stderr and track byte counts
   let stdoutContent = "";
@@ -168,12 +185,26 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
     }
   }
 
-  // Wait for process to close
+  // Wait for process to close (or error if spawn fails entirely)
   const { exitCode } = await new Promise<{
     exitCode: number | null;
   }>((resolve) => {
+    let resolved = false;
     child.on("close", (code) => {
-      resolve({ exitCode: code });
+      if (!resolved) {
+        resolved = true;
+        resolve({ exitCode: code });
+      }
+    });
+    child.on("error", () => {
+      // If close never fires (e.g., ENOENT), resolve with null exit code
+      // Give close a short time to fire; if it does, we use that instead
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve({ exitCode: null });
+        }
+      }, 100);
     });
   });
 
@@ -197,6 +228,16 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
       type: "timeout",
       durationMs,
       killed: true,
+    };
+    return;
+  }
+
+  // If the spawn itself failed (e.g., ENOENT), yield an error event
+  if (spawnError) {
+    yield {
+      type: "error",
+      error: spawnError.message,
+      exitCode: exitCode ?? 1,
     };
     return;
   }
