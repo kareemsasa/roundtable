@@ -15,10 +15,7 @@ async function collectEvents(iter: AsyncIterable<AgentEvent>): Promise<AgentEven
 }
 
 /** Create a fake "codex" executable (Node script) with configurable behavior */
-async function createFakeCodex(
-  dir: string,
-  behavior: "echo" | "error" | "hang",
-): Promise<string> {
+async function createFakeCodex(dir: string, behavior: "echo" | "error" | "hang"): Promise<string> {
   const scriptPath = join(dir, "fake-codex");
   let script: string;
 
