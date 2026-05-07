@@ -333,7 +333,11 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", response: "word1 word2 word3", streamChunks: true }),
+          claude: new MockAdapter({
+            id: "claude",
+            response: "word1 word2 word3",
+            streamChunks: true,
+          }),
           codex: new MockAdapter({ id: "codex", response: "Codex response" }),
           steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },

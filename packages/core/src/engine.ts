@@ -109,20 +109,30 @@ export class RoundtableEngine {
     const events: SessionEvent[] = [];
 
     // Emit session_started
-    const sessionStartedEvent = makeSessionEvent("session_started", sessionId, {
-      targetPath,
-      contextPackId: contextPack.id,
-    }, { participant: "roundtable" });
+    const sessionStartedEvent = makeSessionEvent(
+      "session_started",
+      sessionId,
+      {
+        targetPath,
+        contextPackId: contextPack.id,
+      },
+      { participant: "roundtable" },
+    );
     await this.store.appendEvent(sessionId, sessionStartedEvent);
     events.push(sessionStartedEvent);
 
     // Emit context_pack_built
-    const contextPackBuiltEvent = makeSessionEvent("context_pack_built", sessionId, {
-      contextPackId: contextPack.id,
-      version: contextPack.version,
-      fileCount: contextPack.stats.includedFiles,
-      totalBytes: contextPack.stats.totalBytes,
-    }, { participant: "roundtable" });
+    const contextPackBuiltEvent = makeSessionEvent(
+      "context_pack_built",
+      sessionId,
+      {
+        contextPackId: contextPack.id,
+        version: contextPack.version,
+        fileCount: contextPack.stats.includedFiles,
+        totalBytes: contextPack.stats.totalBytes,
+      },
+      { participant: "roundtable" },
+    );
     await this.store.appendEvent(sessionId, contextPackBuiltEvent);
     events.push(contextPackBuiltEvent);
 
@@ -144,7 +154,10 @@ export class RoundtableEngine {
 
     // Update status to deliberating
     meta.status = "deliberating";
-    await this.store.updateMeta(meta.id, { status: "deliberating", updatedAt: new Date().toISOString() });
+    await this.store.updateMeta(meta.id, {
+      status: "deliberating",
+      updatedAt: new Date().toISOString(),
+    });
 
     // Load context pack
     const contextPack = await this.store.loadContextPack(meta.id, meta.currentContextPackId);
@@ -189,7 +202,10 @@ export class RoundtableEngine {
 
     // After deliberation, set status back to awaiting_user
     meta.status = "awaiting_user";
-    await this.store.updateMeta(meta.id, { status: "awaiting_user", updatedAt: new Date().toISOString() });
+    await this.store.updateMeta(meta.id, {
+      status: "awaiting_user",
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   async refreshContext(session: Session, contextPack: ContextPack): Promise<ContextPack> {
@@ -199,12 +215,17 @@ export class RoundtableEngine {
     await this.store.saveContextPack(meta.id, contextPack);
 
     // Emit context_pack_built event
-    const event = makeSessionEvent("context_pack_built", meta.id, {
-      contextPackId: contextPack.id,
-      version: contextPack.version,
-      fileCount: contextPack.stats.includedFiles,
-      totalBytes: contextPack.stats.totalBytes,
-    }, { participant: "roundtable" });
+    const event = makeSessionEvent(
+      "context_pack_built",
+      meta.id,
+      {
+        contextPackId: contextPack.id,
+        version: contextPack.version,
+        fileCount: contextPack.stats.includedFiles,
+        totalBytes: contextPack.stats.totalBytes,
+      },
+      { participant: "roundtable" },
+    );
     await this.store.appendEvent(meta.id, event);
     session.events.push(event);
 
@@ -222,14 +243,22 @@ export class RoundtableEngine {
     const { meta } = session;
 
     // Emit session_archived event
-    const event = makeSessionEvent("session_archived", meta.id, {}, {
-      participant: "roundtable",
-    });
+    const event = makeSessionEvent(
+      "session_archived",
+      meta.id,
+      {},
+      {
+        participant: "roundtable",
+      },
+    );
     await this.store.appendEvent(meta.id, event);
     session.events.push(event);
 
     // Update status
     meta.status = "archived";
-    await this.store.updateMeta(meta.id, { status: "archived", updatedAt: new Date().toISOString() });
+    await this.store.updateMeta(meta.id, {
+      status: "archived",
+      updatedAt: new Date().toISOString(),
+    });
   }
 }

@@ -10,7 +10,10 @@ import type { RoundtableConfig, ContextPack, SessionEvent, AgentAdapter } from "
 
 // === Helpers ===
 
-function makeConfig(dataDir: string, overrides: Partial<RoundtableConfig["deliberation"]> = {}): RoundtableConfig {
+function makeConfig(
+  dataDir: string,
+  overrides: Partial<RoundtableConfig["deliberation"]> = {},
+): RoundtableConfig {
   return {
     dataDir,
     context: { budgetBytes: 100_000, maxFiles: 50, maxFileBytes: 10_000, maxTreeDepth: 5 },
@@ -21,9 +24,33 @@ function makeConfig(dataDir: string, overrides: Partial<RoundtableConfig["delibe
       ...overrides,
     },
     adapters: {
-      claude: { command: "claude", mode: "mock", limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
-      codex: { command: "codex", mode: "mock", limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
-      steward: { command: "claude", mode: "mock", limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
+      claude: {
+        command: "claude",
+        mode: "mock",
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
+      codex: {
+        command: "codex",
+        mode: "mock",
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
+      steward: {
+        command: "claude",
+        mode: "mock",
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
     },
   };
 }
@@ -111,7 +138,10 @@ describe("Integration: full product loop with mock adapters", () => {
       adapters: {
         claude: new MockAdapter({ id: "claude", response: "Claude's analysis of the codebase." }),
         codex: new MockAdapter({ id: "codex", response: "Codex's implementation suggestion." }),
-        steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded", "The team reached consensus.") }),
+        steward: new MockAdapter({
+          id: "steward",
+          response: stewardDecision("concluded", "The team reached consensus."),
+        }),
       },
       config,
     });
@@ -131,8 +161,12 @@ describe("Integration: full product loop with mock adapters", () => {
     expect(types[types.length - 1]).toBe("deliberation_ended");
 
     // Verify claude and codex both responded
-    const claudeResponses = eventsOfType(events, "agent_response_end").filter((e) => e.participant === "claude");
-    const codexResponses = eventsOfType(events, "agent_response_end").filter((e) => e.participant === "codex");
+    const claudeResponses = eventsOfType(events, "agent_response_end").filter(
+      (e) => e.participant === "claude",
+    );
+    const codexResponses = eventsOfType(events, "agent_response_end").filter(
+      (e) => e.participant === "codex",
+    );
     expect(claudeResponses).toHaveLength(1);
     expect(codexResponses).toHaveLength(1);
 
@@ -210,7 +244,10 @@ describe("Integration: full product loop with mock adapters", () => {
       adapters: {
         claude: new MockAdapter({ id: "claude", response: "Claude response." }),
         codex: new MockAdapter({ id: "codex", response: "Codex response." }),
-        steward: new MockAdapter({ id: "steward", response: stewardDecision("continue", "Keep going") }),
+        steward: new MockAdapter({
+          id: "steward",
+          response: stewardDecision("continue", "Keep going"),
+        }),
       },
       config,
     });
@@ -283,7 +320,10 @@ describe("Integration: full product loop with mock adapters", () => {
       adapters: {
         claude: new MockAdapter({ id: "claude", error: "Claude process crashed unexpectedly" }),
         codex: new MockAdapter({ id: "codex", response: "Codex's solid implementation." }),
-        steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded", "Codex provided adequate solution.") }),
+        steward: new MockAdapter({
+          id: "steward",
+          response: stewardDecision("concluded", "Codex provided adequate solution."),
+        }),
       },
       config,
     });
@@ -299,7 +339,9 @@ describe("Integration: full product loop with mock adapters", () => {
     expect(errors[0].data.error).toContain("Claude process crashed unexpectedly");
 
     // Verify Codex still responds
-    const codexResponses = eventsOfType(events, "agent_response_end").filter((e) => e.participant === "codex");
+    const codexResponses = eventsOfType(events, "agent_response_end").filter(
+      (e) => e.participant === "codex",
+    );
     expect(codexResponses).toHaveLength(1);
     expect(codexResponses[0].data.content).toBe("Codex's solid implementation.");
 
@@ -369,7 +411,10 @@ describe("Integration: full product loop with mock adapters", () => {
       adapters: {
         claude: new MockAdapter({ id: "claude", response: "Claude's thoughts." }),
         codex: new MockAdapter({ id: "codex", response: "Codex's thoughts." }),
-        steward: new MockAdapter({ id: "steward", response: "I think we should continue working on this." }),
+        steward: new MockAdapter({
+          id: "steward",
+          response: "I think we should continue working on this.",
+        }),
       },
       config,
     });
@@ -407,7 +452,10 @@ describe("Integration: full product loop with mock adapters", () => {
     const errorAdapters = {
       claude: new MockAdapter({ id: "claude", error: "Claude failed" }),
       codex: new MockAdapter({ id: "codex", response: "Codex works in round 1." }),
-      steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded", "Partial results.") }),
+      steward: new MockAdapter({
+        id: "steward",
+        response: stewardDecision("concluded", "Partial results."),
+      }),
     };
 
     const engine1 = new RoundtableEngine({
@@ -430,7 +478,10 @@ describe("Integration: full product loop with mock adapters", () => {
     const successAdapters = {
       claude: new MockAdapter({ id: "claude", response: "Claude works now." }),
       codex: new MockAdapter({ id: "codex", response: "Codex works in round 2." }),
-      steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded", "Full consensus.") }),
+      steward: new MockAdapter({
+        id: "steward",
+        response: stewardDecision("concluded", "Full consensus."),
+      }),
     };
 
     const engine2 = new RoundtableEngine({
@@ -474,7 +525,10 @@ describe("Integration: full product loop with mock adapters", () => {
       adapters: {
         claude: new MockAdapter({ id: "claude", response: "Claude's replay-test response." }),
         codex: new MockAdapter({ id: "codex", response: "Codex's replay-test response." }),
-        steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded", "Replay summary.") }),
+        steward: new MockAdapter({
+          id: "steward",
+          response: stewardDecision("concluded", "Replay summary."),
+        }),
       },
       config,
     });
@@ -528,7 +582,10 @@ describe("Integration: full product loop with mock adapters", () => {
       adapters: {
         claude: new MockAdapter({ id: "claude", response: "Claude response." }),
         codex: new MockAdapter({ id: "codex", response: "Codex response." }),
-        steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded", "Done.") }),
+        steward: new MockAdapter({
+          id: "steward",
+          response: stewardDecision("concluded", "Done."),
+        }),
       },
       config,
     });

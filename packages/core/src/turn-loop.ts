@@ -124,11 +124,16 @@ async function invokeAdapter(
       const { type: _agentType, ...data } = agentEvent;
       void _agentType;
 
-      const sessionEvent = makeSessionEvent(sessionType, sessionId, data as Record<string, unknown>, {
-        deliberationId,
-        contextPackId,
-        participant: eventParticipant,
-      });
+      const sessionEvent = makeSessionEvent(
+        sessionType,
+        sessionId,
+        data as Record<string, unknown>,
+        {
+          deliberationId,
+          contextPackId,
+          participant: eventParticipant,
+        },
+      );
 
       events.push(sessionEvent);
 
@@ -138,11 +143,16 @@ async function invokeAdapter(
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    const errorEvent = makeSessionEvent("agent_error", sessionId, { error: errorMessage }, {
-      deliberationId,
-      contextPackId,
-      participant: "roundtable",
-    });
+    const errorEvent = makeSessionEvent(
+      "agent_error",
+      sessionId,
+      { error: errorMessage },
+      {
+        deliberationId,
+        contextPackId,
+        participant: "roundtable",
+      },
+    );
     events.push(errorEvent);
     failed = true;
   }
@@ -177,21 +187,31 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
 
   // 1. Yield user_message
   yield emit(
-    makeSessionEvent("user_message", sessionId, { content: userMessage }, {
-      participant: "user",
-    }),
+    makeSessionEvent(
+      "user_message",
+      sessionId,
+      { content: userMessage },
+      {
+        participant: "user",
+      },
+    ),
   );
 
   // 2. Yield deliberation_started
   const userMessageEventId = emittedEvents[0].id;
   yield emit(
-    makeSessionEvent("deliberation_started", sessionId, {
-      userMessageEventId,
-      contextPackId,
-    }, {
-      deliberationId,
-      contextPackId,
-    }),
+    makeSessionEvent(
+      "deliberation_started",
+      sessionId,
+      {
+        userMessageEventId,
+        contextPackId,
+      },
+      {
+        deliberationId,
+        contextPackId,
+      },
+    ),
   );
 
   // Helper to check abort
@@ -207,11 +227,16 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
     if (isAborted()) {
       endReason = "user_stop";
       yield emit(
-        makeSessionEvent("deliberation_interrupted", sessionId, { reason: "user_stop" }, {
-          deliberationId,
-          contextPackId,
-          participant: "roundtable",
-        }),
+        makeSessionEvent(
+          "deliberation_interrupted",
+          sessionId,
+          { reason: "user_stop" },
+          {
+            deliberationId,
+            contextPackId,
+            participant: "roundtable",
+          },
+        ),
       );
       return; // no deliberation_ended after interrupt — the interrupt IS the end signal
     }
@@ -232,7 +257,13 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
     };
 
     const claudeResult = await invokeAdapter(
-      adapters.claude, claudeInput, "claude", sessionId, deliberationId, contextPackId, signal,
+      adapters.claude,
+      claudeInput,
+      "claude",
+      sessionId,
+      deliberationId,
+      contextPackId,
+      signal,
     );
     for (const event of claudeResult.events) {
       yield emit(event);
@@ -254,7 +285,13 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
     };
 
     const codexResult = await invokeAdapter(
-      adapters.codex, codexInput, "codex", sessionId, deliberationId, contextPackId, signal,
+      adapters.codex,
+      codexInput,
+      "codex",
+      sessionId,
+      deliberationId,
+      contextPackId,
+      signal,
     );
     for (const event of codexResult.events) {
       yield emit(event);
@@ -282,7 +319,13 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
     };
 
     const stewardResult = await invokeAdapter(
-      adapters.steward, stewardInput, "steward", sessionId, deliberationId, contextPackId, signal,
+      adapters.steward,
+      stewardInput,
+      "steward",
+      sessionId,
+      deliberationId,
+      contextPackId,
+      signal,
     );
 
     // Emit steward adapter events
@@ -316,14 +359,19 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
     } catch {
       // Parse or validation failure
       yield emit(
-        makeSessionEvent("steward_parse_error", sessionId, {
-          rawContent,
-          error: "Failed to parse steward response as valid StewardDecision JSON",
-        }, {
-          deliberationId,
-          contextPackId,
-          participant: "roundtable",
-        }),
+        makeSessionEvent(
+          "steward_parse_error",
+          sessionId,
+          {
+            rawContent,
+            error: "Failed to parse steward response as valid StewardDecision JSON",
+          },
+          {
+            deliberationId,
+            contextPackId,
+            participant: "roundtable",
+          },
+        ),
       );
       endReason = "steward_parse_error";
       roundsCompleted = round;
@@ -332,11 +380,16 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
 
     // Emit steward_decision
     yield emit(
-      makeSessionEvent("steward_decision", sessionId, decision as unknown as Record<string, unknown>, {
-        deliberationId,
-        contextPackId,
-        participant: "steward",
-      }),
+      makeSessionEvent(
+        "steward_decision",
+        sessionId,
+        decision as unknown as Record<string, unknown>,
+        {
+          deliberationId,
+          contextPackId,
+          participant: "steward",
+        },
+      ),
     );
 
     roundsCompleted = round;
@@ -364,12 +417,17 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
 
   // Yield deliberation_ended
   yield emit(
-    makeSessionEvent("deliberation_ended", sessionId, {
-      reason: endReason,
-      rounds: roundsCompleted,
-    }, {
-      deliberationId,
-      contextPackId,
-    }),
+    makeSessionEvent(
+      "deliberation_ended",
+      sessionId,
+      {
+        reason: endReason,
+        rounds: roundsCompleted,
+      },
+      {
+        deliberationId,
+        contextPackId,
+      },
+    ),
   );
 }

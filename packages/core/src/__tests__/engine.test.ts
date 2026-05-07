@@ -14,9 +14,33 @@ function makeConfig(dataDir: string): RoundtableConfig {
     context: { budgetBytes: 100_000, maxFiles: 50, maxFileBytes: 10_000, maxTreeDepth: 5 },
     deliberation: { maxRounds: 2, participantTimeoutMs: 120_000, deliberationTimeoutMs: 600_000 },
     adapters: {
-      claude: { command: "claude", mode: "mock", limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
-      codex: { command: "codex", mode: "mock", limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
-      steward: { command: "claude", mode: "mock", limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
+      claude: {
+        command: "claude",
+        mode: "mock",
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
+      codex: {
+        command: "codex",
+        mode: "mock",
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
+      steward: {
+        command: "claude",
+        mode: "mock",
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
     },
   };
 }
@@ -36,7 +60,10 @@ function mockContextPack(): ContextPack {
   };
 }
 
-function stewardDecision(status: "concluded" | "continue" | "needs_user", summary = "Test summary"): string {
+function stewardDecision(
+  status: "concluded" | "continue" | "needs_user",
+  summary = "Test summary",
+): string {
   return JSON.stringify({
     status,
     reason: `Steward says ${status}`,

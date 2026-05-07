@@ -2,11 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildTranscript } from "../transcript.js";
 import type { SessionEvent } from "../types.js";
 
-function makeEvent(
-  type: string,
-  participant: string,
-  data: Record<string, unknown>,
-): SessionEvent {
+function makeEvent(type: string, participant: string, data: Record<string, unknown>): SessionEvent {
   return {
     id: `evt_${Math.random().toString(36).slice(2)}`,
     type: type as SessionEvent["type"],
@@ -28,7 +24,11 @@ describe("buildTranscript", () => {
 
   it("includes agent responses", () => {
     const events = [
-      makeEvent("agent_response_end", "claude", { content: "Refactor auth.", durationMs: 3000, exitCode: 0 }),
+      makeEvent("agent_response_end", "claude", {
+        content: "Refactor auth.",
+        durationMs: 3000,
+        exitCode: 0,
+      }),
     ];
     const transcript = buildTranscript(events);
     expect(transcript).toHaveLength(1);
@@ -39,7 +39,9 @@ describe("buildTranscript", () => {
   it("includes steward decisions as summary text", () => {
     const events = [
       makeEvent("steward_decision", "steward", {
-        status: "concluded", reason: "Consensus", summary: "Both agree on refactoring.",
+        status: "concluded",
+        reason: "Consensus",
+        summary: "Both agree on refactoring.",
       }),
     ];
     const transcript = buildTranscript(events);

@@ -23,10 +23,7 @@ function extractDisplayContent(event: SessionEvent): string {
   }
 }
 
-export function buildTranscript(
-  events: SessionEvent[],
-  maxBytes?: number,
-): TranscriptMessage[] {
+export function buildTranscript(events: SessionEvent[], maxBytes?: number): TranscriptMessage[] {
   const all = events
     .filter((e) => DISPLAY_EVENT_TYPES.has(e.type) && e.participant)
     .map((e) => ({
