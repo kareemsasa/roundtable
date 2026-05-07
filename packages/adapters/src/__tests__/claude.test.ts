@@ -15,10 +15,7 @@ async function collectEvents(iter: AsyncIterable<AgentEvent>): Promise<AgentEven
 }
 
 /** Create a fake "claude" executable (Node script) with configurable behavior */
-async function createFakeClaude(
-  dir: string,
-  behavior: "echo" | "error" | "hang",
-): Promise<string> {
+async function createFakeClaude(dir: string, behavior: "echo" | "error" | "hang"): Promise<string> {
   const scriptPath = join(dir, "fake-claude");
   let script: string;
 
@@ -118,10 +115,7 @@ describe("ClaudeAdapter", () => {
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
 
-    const adapter = new ClaudeAdapter(
-      makeAdapterConfig({ command: fakeCmd }),
-      dataDir,
-    );
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
 
     const input = makeAgentInput();
     const events = await collectEvents(adapter.invoke(input));
@@ -150,14 +144,15 @@ describe("ClaudeAdapter", () => {
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
 
-    const adapter = new ClaudeAdapter(
-      makeAdapterConfig({ command: fakeCmd }),
-      dataDir,
-    );
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
 
     const input = makeAgentInput({
       transcript: [
-        { participant: "user", content: "What does this code do?", timestamp: "2026-05-07T00:00:00Z" },
+        {
+          participant: "user",
+          content: "What does this code do?",
+          timestamp: "2026-05-07T00:00:00Z",
+        },
         { participant: "claude", content: "It logs hello.", timestamp: "2026-05-07T00:00:01Z" },
       ],
     });
@@ -178,10 +173,7 @@ describe("ClaudeAdapter", () => {
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
 
-    const adapter = new ClaudeAdapter(
-      makeAdapterConfig({ command: fakeCmd }),
-      dataDir,
-    );
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
 
     const input = makeAgentInput();
     const events = await collectEvents(adapter.invoke(input));
@@ -227,10 +219,7 @@ describe("ClaudeAdapter", () => {
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
 
-    const adapter = new ClaudeAdapter(
-      makeAdapterConfig({ command: fakeCmd }),
-      dataDir,
-    );
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
 
     const invocationId = randomUUID();
     const input = makeAgentInput({ invocationId });
@@ -268,10 +257,7 @@ describe("ClaudeAdapter", () => {
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
 
-    const adapter = new ClaudeAdapter(
-      makeAdapterConfig({ command: fakeCmd }),
-      dataDir,
-    );
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
 
     const input = makeAgentInput();
     const events = await collectEvents(adapter.invoke(input));
@@ -312,10 +298,7 @@ process.stdin.on("end", () => {});
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
 
-    const adapter = new ClaudeAdapter(
-      makeAdapterConfig({ command: scriptPath }),
-      dataDir,
-    );
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
 
     const input = makeAgentInput({ systemPrompt: "Test system prompt" });
     const events = await collectEvents(adapter.invoke(input));
