@@ -1,10 +1,21 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { scanFolder } from "../scan-folder.js";
 
 const FIXTURES = path.resolve(import.meta.dirname, "fixtures/sample-project");
 
 describe("scanFolder", () => {
+  beforeAll(async () => {
+    // Create .env.local fixture (gitignored, so must be created at test time)
+    const envPath = path.join(FIXTURES, ".env.local");
+    try {
+      await fs.access(envPath);
+    } catch {
+      await fs.writeFile(envPath, "SECRET_KEY=supersecret123\n");
+    }
+  });
+
   it("returns all files in the fixture directory", async () => {
     const files = await scanFolder(FIXTURES);
     const relativePaths = files.map((f) => f.relativePath).sort();
