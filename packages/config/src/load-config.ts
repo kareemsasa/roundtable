@@ -17,24 +17,19 @@ export function resolveConfig(input: ResolveInput): RoundtableConfig {
   // Start with defaults
   let config = structuredClone(DEFAULT_CONFIG);
 
-  // Layer 1: ROUNDTABLE_HOME env var
-  if (env.ROUNDTABLE_HOME) {
-    config.dataDir = env.ROUNDTABLE_HOME;
-  }
-
   // Layer 2: global config (~/.config/roundtable/config.yaml)
   config = deepMerge(config, globalConfig);
 
   // Layer 3: project config (roundtable.config.yaml / .roundtable/config.yaml)
   config = deepMerge(config, projectConfig);
 
-  // Layer 4: CLI flags
-  config = deepMerge(config, cliOverrides);
-
-  // Re-apply env override (it wins over config files but not CLI flags)
-  if (env.ROUNDTABLE_HOME && !cliOverrides.dataDir) {
+  // ROUNDTABLE_HOME env var overrides config files but not CLI flags
+  if (env.ROUNDTABLE_HOME) {
     config.dataDir = env.ROUNDTABLE_HOME;
   }
+
+  // Layer 4: CLI flags (highest precedence)
+  config = deepMerge(config, cliOverrides);
 
   return config;
 }
