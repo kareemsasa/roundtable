@@ -2,7 +2,14 @@ import type { SessionMeta, SessionEvent, SessionStore, ContextPack } from "@roun
 import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { appendJsonl, readJsonl } from "./jsonl.js";
-import { sessionDir, sessionsRoot, eventsPath, metaPath, contextPackPath, artifactPath } from "./paths.js";
+import {
+  sessionDir,
+  sessionsRoot,
+  eventsPath,
+  metaPath,
+  contextPackPath,
+  artifactPath,
+} from "./paths.js";
 
 export class FileSessionStore implements SessionStore {
   constructor(private dataDir: string) {}
@@ -24,11 +31,7 @@ export class FileSessionStore implements SessionStore {
   async updateMeta(sessionId: string, updates: Partial<SessionMeta>): Promise<void> {
     const current = await this.loadSession(sessionId);
     const updated = { ...current, ...updates };
-    await writeFile(
-      metaPath(this.dataDir, sessionId),
-      JSON.stringify(updated, null, 2),
-      "utf-8",
-    );
+    await writeFile(metaPath(this.dataDir, sessionId), JSON.stringify(updated, null, 2), "utf-8");
   }
 
   async appendEvent(sessionId: string, event: SessionEvent): Promise<void> {
@@ -65,10 +68,7 @@ export class FileSessionStore implements SessionStore {
   }
 
   async loadContextPack(sessionId: string, contextPackId: string): Promise<ContextPack> {
-    const raw = await readFile(
-      contextPackPath(this.dataDir, sessionId, contextPackId),
-      "utf-8",
-    );
+    const raw = await readFile(contextPackPath(this.dataDir, sessionId, contextPackId), "utf-8");
     return JSON.parse(raw) as ContextPack;
   }
 

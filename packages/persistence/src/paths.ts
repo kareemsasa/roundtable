@@ -16,11 +16,7 @@ export function metaPath(dataDir: string, sessionId: string): string {
   return join(sessionDir(dataDir, sessionId), "meta.json");
 }
 
-export function contextPackPath(
-  dataDir: string,
-  sessionId: string,
-  contextPackId: string,
-): string {
+export function contextPackPath(dataDir: string, sessionId: string, contextPackId: string): string {
   return join(sessionDir(dataDir, sessionId), "context-packs", `${contextPackId}.json`);
 }
 

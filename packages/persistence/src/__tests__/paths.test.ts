@@ -55,9 +55,7 @@ describe("paths", () => {
   });
 
   it("stewardSummaryPath returns steward-summary.md inside session dir", () => {
-    expect(stewardSummaryPath(DATA, "s1")).toBe(
-      join(DATA, "sessions", "s1", "steward-summary.md"),
-    );
+    expect(stewardSummaryPath(DATA, "s1")).toBe(join(DATA, "sessions", "s1", "steward-summary.md"));
   });
 
   it("tmpDir returns dataDir/tmp/<invocationId>", () => {

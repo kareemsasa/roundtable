@@ -25,7 +25,14 @@ function extractContent(event: SessionEvent): string {
 }
 
 export function generateTranscriptMarkdown(events: SessionEvent[], sessionId: string): string {
-  const lines: string[] = [`# Roundtable Transcript`, "", `Session: \`${sessionId}\``, "", "---", ""];
+  const lines: string[] = [
+    `# Roundtable Transcript`,
+    "",
+    `Session: \`${sessionId}\``,
+    "",
+    "---",
+    "",
+  ];
   for (const event of events) {
     if (!DISPLAY_EVENTS.has(event.type) || !event.participant) continue;
     const label = PARTICIPANT_LABELS[event.participant] ?? event.participant;
