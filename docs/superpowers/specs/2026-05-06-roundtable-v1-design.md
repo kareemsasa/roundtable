@@ -24,7 +24,7 @@ Roundtable is a local-first persistent group chat where Claude and Codex deliber
 - No kctl execution
 - No vault writes
 - No Service Hub mutation
-- No arbitrary shell command execution
+- No arbitrary or mutating command execution against the target project (v1 may run bounded read-only metadata commands such as `git status`, `git log`, `git ls-files`, and `git diff --stat` for context building, and may invoke provider CLIs from a Roundtable-owned temp directory)
 - No OS-level sandboxing (future hardening)
 - No custom/pluggable agents
 - No direct Anthropic/OpenAI API SDK usage — integration is via CLI child processes
@@ -174,7 +174,7 @@ At the storage boundary (JSONL), `data` is `Record<string, unknown>`. Internally
 | `agent_response_end` | `{ content: string, durationMs: number, exitCode: number }` |
 | `agent_error` | `{ error: string, stderr?: string, exitCode?: number }` |
 | `agent_invocation_timeout` | `{ durationMs: number, killed: boolean }` |
-| `output_truncated` | `{ stream: "stdout", originalBytes: number, keptBytes: number }` |
+| `output_truncated` | `{ stream: "stdout" \| "stderr", originalBytes: number, keptBytes: number }` |
 | `steward_decision` | `StewardDecision` |
 | `steward_parse_error` | `{ rawText: string, parseError: string }` |
 | `context_pack_built` | `{ contextPackId: string, version: number, fileCount: number, totalBytes: number }` |
@@ -339,7 +339,7 @@ type AgentEvent =
   | { type: "response_end"; content: string; durationMs: number; exitCode: number }
   | { type: "error"; error: string; stderr?: string; exitCode?: number }
   | { type: "timeout"; durationMs: number; killed: boolean }
-  | { type: "output_truncated"; stream: "stdout"; originalBytes: number; keptBytes: number };
+  | { type: "output_truncated"; stream: "stdout" | "stderr"; originalBytes: number; keptBytes: number };
 ```
 
 The turn loop uses `response_end`, `error`, and `timeout` for state transitions. `chunk` drives streaming display. `invocation_started` and `invocation_metadata` go to the event log and artifacts for debugging.
@@ -486,7 +486,7 @@ Files are selected in this order within the context budget:
 - `*.pem`, `*.key`
 - `credentials.*`
 - `id_rsa*`
-- Database files
+- Database files (`*.sqlite`, `*.sqlite3`, `*.db`, `*.duckdb`)
 - Binary/media files
 
 A future `--unsafe` flag may relax hard-deny rules, but v1 refuses.
@@ -705,14 +705,14 @@ Later: proper session summarization.
 
 ### 7.8 User Interrupt
 
-Ctrl+C or `/stop` during a deliberation:
+Ctrl+C during a deliberation (or `/stop`):
 
 1. Signal abort on current adapter invocation
 2. Adapter sends SIGTERM -> grace period -> SIGKILL
 3. Emit `deliberation_interrupted` with reason `"user_stop"`
 4. Return session to `awaiting_user`
 
-The session survives interruption.
+The session survives interruption. Ctrl+C while idle at the prompt leaves the room (same as `/exit`). See section 8.4 for full key behavior.
 
 ---
 
@@ -786,7 +786,7 @@ If a message is provided, run the first deliberation immediately, then stay in i
 - `/transcript` — regenerate and display transcript
 - `/help` — show available commands
 
-Ctrl+C and Ctrl+D behave as `/exit`.
+Ctrl+C while idle (at the `You:` prompt) behaves as `/exit`. Ctrl+C during an active deliberation behaves as `/stop` (interrupts the deliberation, stays in session). Ctrl+D / EOF behaves as `/exit`.
 
 ### 8.5 Display Rendering
 
@@ -887,7 +887,7 @@ v1 is **read-only by design**, not read-only by kernel enforcement. Without OS-l
 - Reads from target path (context pack building only)
 - Writes only to `~/.local/share/roundtable/`
 - Never writes to, deletes from, or modifies the target folder
-- Never executes commands against the target folder
+- Never executes mutating commands against the target folder (bounded read-only metadata commands like `git status`, `git log`, `git ls-files`, `git diff --stat` are permitted for context building)
 
 **Layer 2: Adapter invocation (always enforced)**
 
@@ -1094,15 +1094,16 @@ The adapter interface supports future sandboxing. A `SandboxedAdapter` wrapper c
 ```
 M0 (scaffold)
  └-> M1 (types + config)
-      ├-> M2 (persistence)    \
-      ├-> M3 (context)         |-- can be parallel
-      └-> M4 (mock adapters + turn loop) <- depends on M2, M3
-           └-> M5 (CLI shell)
-                └-> M6 (real adapters)
-                     └-> M7 (polish)
+      ├-> M2 (persistence)
+      └-> M3 (context)
+            \
+             -> M4 (mock adapters + turn loop)
+                 └-> M5 (CLI shell)
+                      └-> M6 (real adapters)
+                           └-> M7 (polish)
 ```
 
-M2 and M3 can be built in parallel after M1. M4 depends on both.
+M2 and M3 can run in parallel after M1. M4 begins only after both M2 and M3 are complete.
 
 ### Key Principle
 
@@ -1116,7 +1117,7 @@ Build a fully usable mock-backed Roundtable before touching real Claude/Codex pr
 - **OS-level sandboxing**: SandboxedAdapter wrapper at adapter boundary
 - **Steward escalation**: Policy envelope for routine low-risk actions
 - **Custom agents**: Pluggable participants beyond Claude/Codex
-- **Context refresh**: Automatic or on-demand context pack versioning
+- **Automatic context refresh**: Detect target-folder changes and suggest/perform refresh automatically (v1 has manual `/refresh-context`)
 - **Session summarization**: Compress long transcripts intelligently
 - **Steward-directed turn order**: Dynamic speaker selection
 - **Parallel invocation**: Claude and Codex respond concurrently
