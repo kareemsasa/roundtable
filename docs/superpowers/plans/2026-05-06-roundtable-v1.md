@@ -126,6 +126,7 @@ roundtable/
 ### Task 1: Root Workspace Scaffold
 
 **Files:**
+
 - Create: `pnpm-workspace.yaml`
 - Create: `package.json`
 - Create: `tsconfig.base.json`
@@ -229,6 +230,7 @@ git commit -m "feat: root workspace scaffold with pnpm, TypeScript base config"
 ### Task 2: Package Scaffolds
 
 **Files:**
+
 - Create: `packages/core/package.json`, `packages/core/tsconfig.json`, `packages/core/src/index.ts`
 - Create: `packages/config/package.json`, `packages/config/tsconfig.json`, `packages/config/src/index.ts`
 - Create: `packages/persistence/package.json`, `packages/persistence/tsconfig.json`, `packages/persistence/src/index.ts`
@@ -239,6 +241,7 @@ git commit -m "feat: root workspace scaffold with pnpm, TypeScript base config"
 - [ ] **Step 1: Create packages/core scaffold**
 
 `packages/core/package.json`:
+
 ```json
 {
   "name": "@roundtable/core",
@@ -263,6 +266,7 @@ git commit -m "feat: root workspace scaffold with pnpm, TypeScript base config"
 ```
 
 `packages/core/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -275,6 +279,7 @@ git commit -m "feat: root workspace scaffold with pnpm, TypeScript base config"
 ```
 
 `packages/core/src/index.ts`:
+
 ```ts
 // @roundtable/core — types, schemas, interfaces, engine
 export {};
@@ -283,6 +288,7 @@ export {};
 - [ ] **Step 2: Create packages/config scaffold**
 
 `packages/config/package.json`:
+
 ```json
 {
   "name": "@roundtable/config",
@@ -308,6 +314,7 @@ export {};
 ```
 
 `packages/config/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -316,13 +323,12 @@ export {};
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "references": [{ "path": "../core" }]
 }
 ```
 
 `packages/config/src/index.ts`:
+
 ```ts
 // @roundtable/config — config schema, loading, defaults
 export {};
@@ -331,6 +337,7 @@ export {};
 - [ ] **Step 3: Create packages/persistence scaffold**
 
 `packages/persistence/package.json`:
+
 ```json
 {
   "name": "@roundtable/persistence",
@@ -354,6 +361,7 @@ export {};
 ```
 
 `packages/persistence/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -362,13 +370,12 @@ export {};
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "references": [{ "path": "../core" }]
 }
 ```
 
 `packages/persistence/src/index.ts`:
+
 ```ts
 // @roundtable/persistence — session store, JSONL, markdown export
 export {};
@@ -377,6 +384,7 @@ export {};
 - [ ] **Step 4: Create packages/context scaffold**
 
 `packages/context/package.json`:
+
 ```json
 {
   "name": "@roundtable/context",
@@ -401,6 +409,7 @@ export {};
 ```
 
 `packages/context/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -409,13 +418,12 @@ export {};
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "references": [{ "path": "../core" }]
 }
 ```
 
 `packages/context/src/index.ts`:
+
 ```ts
 // @roundtable/context — folder scanner, context pack builder
 export {};
@@ -424,6 +432,7 @@ export {};
 - [ ] **Step 5: Create packages/adapters scaffold**
 
 `packages/adapters/package.json`:
+
 ```json
 {
   "name": "@roundtable/adapters",
@@ -447,6 +456,7 @@ export {};
 ```
 
 `packages/adapters/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -455,13 +465,12 @@ export {};
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "references": [{ "path": "../core" }]
 }
 ```
 
 `packages/adapters/src/index.ts`:
+
 ```ts
 // @roundtable/adapters — mock, Claude, Codex, Steward adapters
 export {};
@@ -470,6 +479,7 @@ export {};
 - [ ] **Step 6: Create apps/cli scaffold**
 
 `apps/cli/package.json`:
+
 ```json
 {
   "name": "@roundtable/cli",
@@ -497,6 +507,7 @@ export {};
 ```
 
 `apps/cli/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -516,6 +527,7 @@ export {};
 ```
 
 `apps/cli/src/index.ts`:
+
 ```ts
 #!/usr/bin/env node
 // Roundtable CLI — composition root
@@ -544,6 +556,7 @@ git commit -m "feat: scaffold all workspace packages and CLI app"
 ### Task 3: Tooling (ESLint, Prettier, Vitest)
 
 **Files:**
+
 - Create: `eslint.config.js`
 - Create: `.prettierrc`
 - Create: `vitest.workspace.ts`
@@ -552,24 +565,21 @@ git commit -m "feat: scaffold all workspace packages and CLI app"
 - [ ] **Step 1: Create ESLint flat config**
 
 `eslint.config.js`:
+
 ```js
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
 
-export default tseslint.config(
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
-  prettier,
-  {
-    ignores: ["**/dist/**", "**/node_modules/**"],
-  },
-);
+export default tseslint.config(js.configs.recommended, ...tseslint.configs.recommended, prettier, {
+  ignores: ["**/dist/**", "**/node_modules/**"],
+});
 ```
 
 - [ ] **Step 2: Create Prettier config**
 
 `.prettierrc`:
+
 ```json
 {
   "semi": true,
@@ -583,18 +593,17 @@ export default tseslint.config(
 - [ ] **Step 3: Create Vitest workspace config**
 
 `vitest.workspace.ts`:
+
 ```ts
 import { defineWorkspace } from "vitest/config";
 
-export default defineWorkspace([
-  "packages/*/",
-  "apps/*/",
-]);
+export default defineWorkspace(["packages/*/", "apps/*/"]);
 ```
 
 - [ ] **Step 4: Create .gitignore**
 
 `.gitignore`:
+
 ```
 node_modules/
 dist/
@@ -624,11 +633,13 @@ git commit -m "feat: add ESLint, Prettier, Vitest, and .gitignore"
 ### Task 4: CI Pipeline
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Create GitHub Actions CI**
 
 `.github/workflows/ci.yml`:
+
 ```yaml
 name: CI
 on:
@@ -668,12 +679,13 @@ git commit -m "feat: add GitHub Actions CI pipeline"
 ### Task 5: README and CLAUDE.md
 
 **Files:**
+
 - Modify: `README.md`
 - Create: `CLAUDE.md`
 
 - [ ] **Step 1: Write README.md**
 
-```markdown
+````markdown
 # Roundtable
 
 Local-first persistent group chat where Claude and Codex deliberate over a project folder.
@@ -711,11 +723,13 @@ pnpm build
 pnpm test
 pnpm lint
 ```
+````
 
 ## Architecture
 
 See `docs/superpowers/specs/2026-05-06-roundtable-v1-design.md` for the full design spec.
-```
+
+````
 
 - [ ] **Step 2: Write CLAUDE.md**
 
@@ -762,7 +776,7 @@ Local-first CLI group chat for AI deliberation. Claude and Codex respond to user
 ## Spec
 
 Full design: `docs/superpowers/specs/2026-05-06-roundtable-v1-design.md`
-```
+````
 
 - [ ] **Step 3: Commit**
 
@@ -776,12 +790,14 @@ git commit -m "feat: add README and CLAUDE.md with project overview"
 ### Task 6: Core Types
 
 **Files:**
+
 - Create: `packages/core/src/types.ts`
 - Modify: `packages/core/src/index.ts`
 
 - [ ] **Step 1: Write all shared types**
 
 `packages/core/src/types.ts`:
+
 ```ts
 // === Participants ===
 
@@ -1043,6 +1059,7 @@ export interface SessionStore {
 - [ ] **Step 2: Update index.ts to re-export**
 
 `packages/core/src/index.ts`:
+
 ```ts
 export * from "./types.js";
 ```
@@ -1064,6 +1081,7 @@ git commit -m "feat(core): add all shared types and interfaces"
 ### Task 7: Zod Schemas for Events and Steward Decision
 
 **Files:**
+
 - Create: `packages/core/src/schemas.ts`
 - Create: `packages/core/src/__tests__/schemas.test.ts`
 - Modify: `packages/core/src/index.ts`
@@ -1071,12 +1089,10 @@ git commit -m "feat(core): add all shared types and interfaces"
 - [ ] **Step 1: Write the failing test**
 
 `packages/core/src/__tests__/schemas.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
-import {
-  StewardDecisionSchema,
-  SessionEventSchema,
-} from "../schemas.js";
+import { StewardDecisionSchema, SessionEventSchema } from "../schemas.js";
 
 describe("StewardDecisionSchema", () => {
   it("parses a valid concluded decision", () => {
@@ -1171,6 +1187,7 @@ Expected: FAIL — cannot resolve `../schemas.js`
 - [ ] **Step 3: Write the Zod schemas**
 
 `packages/core/src/schemas.ts`:
+
 ```ts
 import { z } from "zod";
 
@@ -1244,6 +1261,7 @@ export const SessionMetaSchema = z.object({
 - [ ] **Step 4: Update index.ts**
 
 Add to `packages/core/src/index.ts`:
+
 ```ts
 export * from "./types.js";
 export * from "./schemas.js";
@@ -1266,6 +1284,7 @@ git commit -m "feat(core): add Zod schemas for events, StewardDecision, SessionM
 ### Task 8: Config Schema and Loading
 
 **Files:**
+
 - Create: `packages/config/src/schema.ts`
 - Create: `packages/config/src/defaults.ts`
 - Create: `packages/config/src/load-config.ts`
@@ -1275,6 +1294,7 @@ git commit -m "feat(core): add Zod schemas for events, StewardDecision, SessionM
 - [ ] **Step 1: Write the failing test for config resolution**
 
 `packages/config/src/__tests__/load-config.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { resolveConfig, DEFAULT_CONFIG } from "../load-config.js";
@@ -1338,6 +1358,7 @@ Expected: FAIL — cannot resolve `../load-config.js`
 - [ ] **Step 3: Write config schema**
 
 `packages/config/src/schema.ts`:
+
 ```ts
 import { z } from "zod";
 
@@ -1389,6 +1410,7 @@ export type PartialConfig = z.infer<typeof PartialConfigSchema>;
 - [ ] **Step 4: Write defaults**
 
 `packages/config/src/defaults.ts`:
+
 ```ts
 import type { RoundtableConfig } from "@roundtable/core";
 import { join } from "node:path";
@@ -1428,6 +1450,7 @@ export const DEFAULT_CONFIG: RoundtableConfig = {
 - [ ] **Step 5: Write config loader**
 
 `packages/config/src/load-config.ts`:
+
 ```ts
 import type { RoundtableConfig } from "@roundtable/core";
 import { DEFAULT_CONFIG, getDefaultDataDir } from "./defaults.js";
@@ -1498,6 +1521,7 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: unknown
 - [ ] **Step 6: Update index.ts**
 
 `packages/config/src/index.ts`:
+
 ```ts
 export { resolveConfig, DEFAULT_CONFIG } from "./load-config.js";
 export { getDefaultDataDir } from "./defaults.js";
@@ -1523,12 +1547,14 @@ git commit -m "feat(config): add config schema, defaults, and layered resolution
 ### Task 9: Paths Module
 
 **Files:**
+
 - Create: `packages/persistence/src/paths.ts`
 - Create: `packages/persistence/src/__tests__/paths.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/persistence/src/__tests__/paths.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { sessionDir, contextPackPath, artifactPath, eventsPath, metaPath } from "../paths.js";
@@ -1570,6 +1596,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement paths module**
 
 `packages/persistence/src/paths.ts`:
+
 ```ts
 import { join } from "node:path";
 
@@ -1589,11 +1616,7 @@ export function metaPath(dataDir: string, sessionId: string): string {
   return join(sessionDir(dataDir, sessionId), "meta.json");
 }
 
-export function contextPackPath(
-  dataDir: string,
-  sessionId: string,
-  contextPackId: string,
-): string {
+export function contextPackPath(dataDir: string, sessionId: string, contextPackId: string): string {
   return join(sessionDir(dataDir, sessionId), "context-packs", `${contextPackId}.json`);
 }
 
@@ -1650,12 +1673,14 @@ git commit -m "feat(persistence): add path resolution module"
 ### Task 10: JSONL Reader/Writer
 
 **Files:**
+
 - Create: `packages/persistence/src/jsonl.ts`
 - Create: `packages/persistence/src/__tests__/jsonl.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/persistence/src/__tests__/jsonl.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { appendJsonl, readJsonl } from "../jsonl.js";
@@ -1716,6 +1741,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement JSONL module**
 
 `packages/persistence/src/jsonl.ts`:
+
 ```ts
 import { appendFile, readFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -1759,6 +1785,7 @@ git commit -m "feat(persistence): add JSONL append-only reader/writer"
 ### Task 11: File Session Store
 
 **Files:**
+
 - Create: `packages/persistence/src/session-store.ts`
 - Create: `packages/persistence/src/__tests__/session-store.test.ts`
 - Modify: `packages/persistence/src/index.ts`
@@ -1766,6 +1793,7 @@ git commit -m "feat(persistence): add JSONL append-only reader/writer"
 - [ ] **Step 1: Write the failing test**
 
 `packages/persistence/src/__tests__/session-store.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { FileSessionStore } from "../session-store.js";
@@ -1869,6 +1897,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement FileSessionStore**
 
 `packages/persistence/src/session-store.ts`:
+
 ```ts
 import type { SessionMeta, SessionEvent, SessionStore, ContextPack } from "@roundtable/core";
 import { SessionEventSchema, SessionMetaSchema } from "@roundtable/core";
@@ -1965,6 +1994,7 @@ export class FileSessionStore implements SessionStore {
 - [ ] **Step 4: Update index.ts**
 
 `packages/persistence/src/index.ts`:
+
 ```ts
 export { FileSessionStore } from "./session-store.js";
 export { appendJsonl, readJsonl } from "./jsonl.js";
@@ -1988,12 +2018,14 @@ git commit -m "feat(persistence): add FileSessionStore with JSONL events and art
 ### Task 12: Markdown Export
 
 **Files:**
+
 - Create: `packages/persistence/src/markdown-export.ts`
 - Create: `packages/persistence/src/__tests__/markdown-export.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/persistence/src/__tests__/markdown-export.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { generateTranscriptMarkdown, generateStewardSummaryMarkdown } from "../markdown-export.js";
@@ -2016,7 +2048,11 @@ describe("generateTranscriptMarkdown", () => {
         timestamp: "2026-05-06T12:00:05Z",
         sessionId: "s1",
         participant: "claude",
-        data: { content: "I recommend focusing on the auth module.", durationMs: 5000, exitCode: 0 },
+        data: {
+          content: "I recommend focusing on the auth module.",
+          durationMs: 5000,
+          exitCode: 0,
+        },
       },
       {
         id: "3",
@@ -2024,7 +2060,11 @@ describe("generateTranscriptMarkdown", () => {
         timestamp: "2026-05-06T12:00:10Z",
         sessionId: "s1",
         participant: "codex",
-        data: { content: "Agreed, the auth module needs attention.", durationMs: 4000, exitCode: 0 },
+        data: {
+          content: "Agreed, the auth module needs attention.",
+          durationMs: 4000,
+          exitCode: 0,
+        },
       },
     ];
 
@@ -2099,6 +2139,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement markdown export**
 
 `packages/persistence/src/markdown-export.ts`:
+
 ```ts
 import type { SessionEvent, StewardDecision } from "@roundtable/core";
 
@@ -2184,6 +2225,7 @@ export function generateStewardSummaryMarkdown(decision: StewardDecision): strin
 - [ ] **Step 4: Update index.ts**
 
 Add to `packages/persistence/src/index.ts`:
+
 ```ts
 export { generateTranscriptMarkdown, generateStewardSummaryMarkdown } from "./markdown-export.js";
 ```
@@ -2205,6 +2247,7 @@ git commit -m "feat(persistence): add markdown export for transcripts and stewar
 ### Task 13: Folder Scanner
 
 **Files:**
+
 - Create: `packages/context/src/scan-folder.ts`
 - Create: `packages/context/src/__tests__/scan-folder.test.ts`
 - Create: `packages/context/src/__tests__/fixtures/` (test fixtures)
@@ -2214,12 +2257,15 @@ git commit -m "feat(persistence): add markdown export for transcripts and stewar
 Create the following directory structure:
 
 `packages/context/src/__tests__/fixtures/sample-project/README.md`:
+
 ```markdown
 # Sample Project
+
 A test project for context pack builder.
 ```
 
 `packages/context/src/__tests__/fixtures/sample-project/package.json`:
+
 ```json
 {
   "name": "sample-project",
@@ -2228,24 +2274,29 @@ A test project for context pack builder.
 ```
 
 `packages/context/src/__tests__/fixtures/sample-project/src/index.ts`:
+
 ```ts
 console.log("hello");
 ```
 
 `packages/context/src/__tests__/fixtures/sample-project/.env.local`:
+
 ```
 SECRET_KEY=supersecret123
 ```
 
 `packages/context/src/__tests__/fixtures/sample-project/docs/guide.md`:
+
 ```markdown
 # Guide
+
 Some documentation.
 ```
 
 - [ ] **Step 2: Write the failing test**
 
 `packages/context/src/__tests__/scan-folder.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { scanFolder } from "../scan-folder.js";
@@ -2286,6 +2337,7 @@ Expected: FAIL
 - [ ] **Step 4: Implement folder scanner**
 
 `packages/context/src/scan-folder.ts`:
+
 ```ts
 import { readdir, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
@@ -2315,9 +2367,7 @@ async function tryGitLsFiles(targetPath: string): Promise<ScannedFile[] | null> 
       cwd: targetPath,
       maxBuffer: 10 * 1024 * 1024,
     });
-    const paths = stdout
-      .split("\0")
-      .filter((p) => p.length > 0);
+    const paths = stdout.split("\0").filter((p) => p.length > 0);
     const files: ScannedFile[] = [];
     for (const relativePath of paths) {
       const absolutePath = join(targetPath, relativePath);
@@ -2390,20 +2440,17 @@ git commit -m "feat(context): add folder scanner with git-tracked preference and
 ### Task 14: File Selection and Priority Ranking
 
 **Files:**
+
 - Create: `packages/context/src/file-selection.ts`
 - Create: `packages/context/src/__tests__/file-selection.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/context/src/__tests__/file-selection.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
-import {
-  categorizeFile,
-  isHardDenied,
-  isDefaultExcluded,
-  selectFiles,
-} from "../file-selection.js";
+import { categorizeFile, isHardDenied, isDefaultExcluded, selectFiles } from "../file-selection.js";
 import type { ScannedFile } from "../scan-folder.js";
 import type { ContextConfig } from "@roundtable/core";
 
@@ -2519,6 +2566,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement file selection**
 
 `packages/context/src/file-selection.ts`:
+
 ```ts
 import type { ContextConfig, FileCategory, OmittedReport } from "@roundtable/core";
 import type { ScannedFile } from "./scan-folder.js";
@@ -2554,12 +2602,7 @@ const PROJECT_META_FILES = new Set([
 ]);
 
 // Priority 5: Infrastructure
-const INFRA_FILES = new Set([
-  "docker-compose.yml",
-  "docker-compose.yaml",
-  "Dockerfile",
-  ".github",
-]);
+const INFRA_FILES = new Set(["docker-compose.yml", "docker-compose.yaml", "Dockerfile", ".github"]);
 
 const INFRA_PATTERNS = [/^\.github\//, /^\.gitlab-ci/, /Dockerfile/];
 
@@ -2590,11 +2633,31 @@ const DEFAULT_EXCLUDE_PATTERNS = [
 ];
 
 const BINARY_EXTENSIONS = new Set([
-  ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".webp",
-  ".mp3", ".mp4", ".wav", ".avi", ".mov",
-  ".zip", ".tar", ".gz", ".bz2", ".7z",
-  ".woff", ".woff2", ".ttf", ".eot",
-  ".exe", ".dll", ".so", ".dylib",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".ico",
+  ".svg",
+  ".webp",
+  ".mp3",
+  ".mp4",
+  ".wav",
+  ".avi",
+  ".mov",
+  ".zip",
+  ".tar",
+  ".gz",
+  ".bz2",
+  ".7z",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot",
+  ".exe",
+  ".dll",
+  ".so",
+  ".dylib",
   ".pdf",
 ]);
 
@@ -2622,13 +2685,20 @@ export function categorizeFile(relativePath: string): FileCategory {
 
 function priorityOf(category: FileCategory): number {
   switch (category) {
-    case "roundtable_config": return 1;
-    case "agent_config": return 2;
-    case "project_meta": return 4;
-    case "config": return 5;
-    case "documentation": return 6;
-    case "source": return 7;
-    default: return 8;
+    case "roundtable_config":
+      return 1;
+    case "agent_config":
+      return 2;
+    case "project_meta":
+      return 4;
+    case "config":
+      return 5;
+    case "documentation":
+      return 6;
+    case "source":
+      return 7;
+    default:
+      return 8;
   }
 }
 
@@ -2721,12 +2791,14 @@ git commit -m "feat(context): add file selection with priority ranking, hard-den
 ### Task 15: Redaction Pass
 
 **Files:**
+
 - Create: `packages/context/src/redaction.ts`
 - Create: `packages/context/src/__tests__/redaction.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/context/src/__tests__/redaction.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { redactSecrets } from "../redaction.js";
@@ -2740,14 +2812,15 @@ describe("redactSecrets", () => {
   });
 
   it("redacts private key blocks", () => {
-    const input = "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKC...\n-----END RSA PRIVATE KEY-----\n";
+    const input =
+      "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKC...\n-----END RSA PRIVATE KEY-----\n";
     const result = redactSecrets(input);
     expect(result).not.toContain("MIIEpAIBAAKC");
     expect(result).toContain("[REDACTED");
   });
 
   it("redacts bearer tokens", () => {
-    const input = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxx\n';
+    const input = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxx\n";
     const result = redactSecrets(input);
     expect(result).not.toContain("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
     expect(result).toContain("[REDACTED]");
@@ -2776,6 +2849,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement redaction**
 
 `packages/context/src/redaction.ts`:
+
 ```ts
 const REDACTION_PATTERNS: { pattern: RegExp; replacement: string }[] = [
   // Private key blocks
@@ -2827,6 +2901,7 @@ git commit -m "feat(context): add secret redaction pass for context pack content
 ### Task 16: Context Pack Builder
 
 **Files:**
+
 - Create: `packages/context/src/build-context-pack.ts`
 - Create: `packages/context/src/markdown-render.ts`
 - Create: `packages/context/src/__tests__/build-context-pack.test.ts`
@@ -2835,6 +2910,7 @@ git commit -m "feat(context): add secret redaction pass for context pack content
 - [ ] **Step 1: Write the failing test**
 
 `packages/context/src/__tests__/build-context-pack.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { buildContextPack } from "../build-context-pack.js";
@@ -2907,8 +2983,15 @@ Expected: FAIL
 - [ ] **Step 3: Implement context pack builder**
 
 `packages/context/src/build-context-pack.ts`:
+
 ```ts
-import type { ContextConfig, ContextFile, ContextPack, DirectoryTree, GitSummary } from "@roundtable/core";
+import type {
+  ContextConfig,
+  ContextFile,
+  ContextPack,
+  DirectoryTree,
+  GitSummary,
+} from "@roundtable/core";
 import { nanoid } from "nanoid";
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
@@ -3029,7 +3112,8 @@ function makeDisplayPath(absolutePath: string): string {
 - [ ] **Step 4: Implement markdown renderer**
 
 `packages/context/src/markdown-render.ts`:
-```ts
+
+````ts
 import type { ContextPack } from "@roundtable/core";
 
 export function renderContextPackMarkdown(pack: ContextPack): string {
@@ -3087,11 +3171,12 @@ export function renderContextPackMarkdown(pack: ContextPack): string {
 
   return lines.join("\n");
 }
-```
+````
 
 - [ ] **Step 5: Update index.ts**
 
 `packages/context/src/index.ts`:
+
 ```ts
 export { buildContextPack } from "./build-context-pack.js";
 export { scanFolder } from "./scan-folder.js";
@@ -3119,6 +3204,7 @@ git commit -m "feat(context): add context pack builder with scanning, selection,
 ### Task 17: Mock Adapters
 
 **Files:**
+
 - Create: `packages/adapters/src/mock.ts`
 - Create: `packages/adapters/src/__tests__/mock.test.ts`
 - Modify: `packages/adapters/src/index.ts`
@@ -3126,6 +3212,7 @@ git commit -m "feat(context): add context pack builder with scanning, selection,
 - [ ] **Step 1: Write the failing test**
 
 `packages/adapters/src/__tests__/mock.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { MockAdapter } from "../mock.js";
@@ -3231,6 +3318,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement MockAdapter**
 
 `packages/adapters/src/mock.ts`:
+
 ```ts
 import type { AgentAdapter, AgentInput, AgentEvent } from "@roundtable/core";
 
@@ -3311,6 +3399,7 @@ export class MockAdapter implements AgentAdapter {
 - [ ] **Step 4: Update index.ts**
 
 `packages/adapters/src/index.ts`:
+
 ```ts
 export { MockAdapter } from "./mock.js";
 export type { MockAdapterConfig } from "./mock.js";
@@ -3333,22 +3422,20 @@ git commit -m "feat(adapters): add MockAdapter with configurable responses, erro
 ### Task 18: Transcript Construction
 
 **Files:**
+
 - Create: `packages/core/src/transcript.ts`
 - Create: `packages/core/src/__tests__/transcript.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/core/src/__tests__/transcript.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { buildTranscript } from "../transcript.js";
 import type { SessionEvent, TranscriptMessage } from "../types.js";
 
-function makeEvent(
-  type: string,
-  participant: string,
-  data: Record<string, unknown>,
-): SessionEvent {
+function makeEvent(type: string, participant: string, data: Record<string, unknown>): SessionEvent {
   return {
     id: `evt_${Math.random().toString(36).slice(2)}`,
     type: type as SessionEvent["type"],
@@ -3439,6 +3526,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement transcript construction**
 
 `packages/core/src/transcript.ts`:
+
 ```ts
 import type { SessionEvent, TranscriptMessage, StewardDecision } from "./types.js";
 
@@ -3465,10 +3553,7 @@ function extractDisplayContent(event: SessionEvent): string {
   }
 }
 
-export function buildTranscript(
-  events: SessionEvent[],
-  maxBytes?: number,
-): TranscriptMessage[] {
+export function buildTranscript(events: SessionEvent[], maxBytes?: number): TranscriptMessage[] {
   const all = events
     .filter((e) => DISPLAY_EVENT_TYPES.has(e.type) && e.participant)
     .map((e) => ({
@@ -3506,6 +3591,7 @@ export function buildTranscript(
 - [ ] **Step 4: Update core index.ts**
 
 Add to `packages/core/src/index.ts`:
+
 ```ts
 export { buildTranscript } from "./transcript.js";
 ```
@@ -3527,6 +3613,7 @@ git commit -m "feat(core): add transcript construction from event log"
 ### Task 19: Turn Loop (Deliberation State Machine)
 
 **Files:**
+
 - Create: `packages/core/src/turn-loop.ts`
 - Create: `packages/core/src/__tests__/turn-loop.test.ts`
 
@@ -3535,6 +3622,7 @@ This is the most complex piece. The turn loop manages one deliberation: Claude -
 - [ ] **Step 1: Write the failing test**
 
 `packages/core/src/__tests__/turn-loop.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { runDeliberation } from "../turn-loop.js";
@@ -3555,9 +3643,7 @@ const LIMITS: DeliberationLimits = {
 
 const MOCK_CONTEXT_PACK = { id: "cp_001" } as ContextPack;
 
-function collectEvents(
-  iter: AsyncIterable<SessionEvent>,
-): Promise<SessionEvent[]> {
+function collectEvents(iter: AsyncIterable<SessionEvent>): Promise<SessionEvent[]> {
   return Array.fromAsync(iter);
 }
 
@@ -3765,6 +3851,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement the turn loop**
 
 `packages/core/src/turn-loop.ts`:
+
 ```ts
 import { nanoid } from "nanoid";
 import { StewardDecisionSchema } from "./schemas.js";
@@ -3819,9 +3906,7 @@ function makeEvent(
   };
 }
 
-export async function* runDeliberation(
-  input: DeliberationInput,
-): AsyncGenerator<SessionEvent> {
+export async function* runDeliberation(input: DeliberationInput): AsyncGenerator<SessionEvent> {
   const deliberationId = `del_${nanoid(12)}`;
   const { sessionId, contextPack, adapters, limits, systemPrompts, signal } = input;
 
@@ -4085,6 +4170,7 @@ function tryParseJson(text: string): unknown {
 - [ ] **Step 4: Update core index.ts**
 
 Add to `packages/core/src/index.ts`:
+
 ```ts
 export { runDeliberation } from "./turn-loop.js";
 export type { DeliberationInput } from "./turn-loop.js";
@@ -4107,12 +4193,14 @@ git commit -m "feat(core): add deliberation turn loop with state machine, hard c
 ### Task 20: RoundtableEngine Orchestrator
 
 **Files:**
+
 - Create: `packages/core/src/engine.ts`
 - Create: `packages/core/src/__tests__/engine.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/core/src/__tests__/engine.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { RoundtableEngine } from "../engine.js";
@@ -4134,9 +4222,33 @@ function makeConfig(dataDir: string): RoundtableConfig {
       deliberationTimeoutMs: 600_000,
     },
     adapters: {
-      claude: { command: "claude", mode: "mock" as const, limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
-      codex: { command: "codex", mode: "mock" as const, limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
-      steward: { command: "claude", mode: "mock" as const, limits: { invocationTimeoutMs: 120_000, maxOutputBytes: 512_000, gracefulShutdownMs: 5_000 } },
+      claude: {
+        command: "claude",
+        mode: "mock" as const,
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
+      codex: {
+        command: "codex",
+        mode: "mock" as const,
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
+      steward: {
+        command: "claude",
+        mode: "mock" as const,
+        limits: {
+          invocationTimeoutMs: 120_000,
+          maxOutputBytes: 512_000,
+          gracefulShutdownMs: 5_000,
+        },
+      },
     },
   };
 }
@@ -4188,7 +4300,11 @@ describe("RoundtableEngine", () => {
   });
 
   it("persists events after deliberation", async () => {
-    const mockContextPack = { id: "cp_test", version: 1, stats: { includedFiles: 1, totalBytes: 100 } } as ContextPack;
+    const mockContextPack = {
+      id: "cp_test",
+      version: 1,
+      stats: { includedFiles: 1, totalBytes: 100 },
+    } as ContextPack;
     const session = await engine.startSession("/tmp/test-project", mockContextPack);
 
     // Session start emits session_started + context_pack_built
@@ -4232,6 +4348,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement RoundtableEngine**
 
 `packages/core/src/engine.ts`:
+
 ```ts
 import { nanoid } from "nanoid";
 import { runDeliberation } from "./turn-loop.js";
@@ -4344,10 +4461,7 @@ export class RoundtableEngine {
     return { meta, events };
   }
 
-  async refreshContext(
-    session: Session,
-    contextPack: ContextPack,
-  ): Promise<ContextPack> {
+  async refreshContext(session: Session, contextPack: ContextPack): Promise<ContextPack> {
     await this.store.saveContextPack(session.meta.id, contextPack);
 
     const event: SessionEvent = {
@@ -4447,6 +4561,7 @@ export class RoundtableEngine {
 - [ ] **Step 4: Update core index.ts**
 
 Add to `packages/core/src/index.ts`:
+
 ```ts
 export { RoundtableEngine } from "./engine.js";
 export type { EngineOptions } from "./engine.js";
@@ -4471,6 +4586,7 @@ git commit -m "feat(core): add RoundtableEngine orchestrator with session lifecy
 ### Task 21: CLI Command Structure
 
 **Files:**
+
 - Modify: `apps/cli/src/index.ts`
 - Create: `apps/cli/src/commands/convene.ts`
 - Create: `apps/cli/src/commands/sessions.ts`
@@ -4480,6 +4596,7 @@ git commit -m "feat(core): add RoundtableEngine orchestrator with session lifecy
 - [ ] **Step 1: Set up Commander program with all commands**
 
 `apps/cli/src/index.ts`:
+
 ```ts
 #!/usr/bin/env node
 import { Command } from "commander";
@@ -4504,6 +4621,7 @@ program.parse();
 - [ ] **Step 2: Create convene command skeleton**
 
 `apps/cli/src/commands/convene.ts`:
+
 ```ts
 import { Command } from "commander";
 
@@ -4516,8 +4634,18 @@ export const conveneCommand = new Command("convene")
   .option("--max-rounds <n>", "Max deliberation rounds", parseInt)
   .option("--context-budget <n>", "Context budget in bytes", parseInt)
   .option("--max-files <n>", "Max files in context pack", parseInt)
-  .option("--include <glob>", "Include pattern", (val: string, prev: string[]) => [...prev, val], [])
-  .option("--exclude <glob>", "Exclude pattern", (val: string, prev: string[]) => [...prev, val], [])
+  .option(
+    "--include <glob>",
+    "Include pattern",
+    (val: string, prev: string[]) => [...prev, val],
+    [],
+  )
+  .option(
+    "--exclude <glob>",
+    "Exclude pattern",
+    (val: string, prev: string[]) => [...prev, val],
+    [],
+  )
   .option("--no-stream", "Disable streaming output")
   .option("--timeout <ms>", "Per-participant timeout in ms", parseInt)
   .option("--verbose", "Show invocation metadata")
@@ -4542,11 +4670,11 @@ export const conveneCommand = new Command("convene")
 - [ ] **Step 3: Create sessions command skeleton**
 
 `apps/cli/src/commands/sessions.ts`:
+
 ```ts
 import { Command } from "commander";
 
-export const sessionsCommand = new Command("sessions")
-  .description("Manage sessions");
+export const sessionsCommand = new Command("sessions").description("Manage sessions");
 
 sessionsCommand
   .command("list")
@@ -4566,6 +4694,7 @@ sessionsCommand
 - [ ] **Step 4: Create show command skeleton**
 
 `apps/cli/src/commands/show.ts`:
+
 ```ts
 import { Command } from "commander";
 
@@ -4586,11 +4715,11 @@ export const showCommand = new Command("show")
 - [ ] **Step 5: Create config command skeleton**
 
 `apps/cli/src/commands/config.ts`:
+
 ```ts
 import { Command } from "commander";
 
-export const configCommand = new Command("config")
-  .description("Manage configuration");
+export const configCommand = new Command("config").description("Manage configuration");
 
 configCommand
   .command("show")
@@ -4627,11 +4756,13 @@ git commit -m "feat(cli): add command structure with convene, sessions, show, an
 ### Task 22: Display Renderer
 
 **Files:**
+
 - Create: `apps/cli/src/render.ts`
 
 - [ ] **Step 1: Implement the event renderer**
 
 `apps/cli/src/render.ts`:
+
 ```ts
 import type { SessionEvent } from "@roundtable/core";
 
@@ -4751,6 +4882,7 @@ git commit -m "feat(cli): add terminal event renderer with streaming and verbose
 ### Task 23: Interactive Mode and Convene Wiring
 
 **Files:**
+
 - Create: `apps/cli/src/interactive.ts`
 - Create: `apps/cli/src/prompts.ts`
 - Modify: `apps/cli/src/commands/convene.ts`
@@ -4758,6 +4890,7 @@ git commit -m "feat(cli): add terminal event renderer with streaming and verbose
 - [ ] **Step 1: Create system prompts**
 
 `apps/cli/src/prompts.ts`:
+
 ```ts
 export const CLAUDE_SYSTEM_PROMPT = `You are Claude, participating in a Roundtable deliberation. You are in READ-ONLY mode.
 
@@ -4812,6 +4945,7 @@ Use "needs_user" when the participants need clarification from the user.`;
 - [ ] **Step 2: Create interactive mode handler**
 
 `apps/cli/src/interactive.ts`:
+
 ```ts
 import { createInterface } from "node:readline";
 import type { Session } from "@roundtable/core";
@@ -4938,6 +5072,7 @@ function printHelp(): void {
 - [ ] **Step 3: Wire convene command**
 
 Replace `apps/cli/src/commands/convene.ts` with the full implementation:
+
 ```ts
 import { Command } from "commander";
 import { resolve } from "node:path";
@@ -4960,8 +5095,18 @@ export const conveneCommand = new Command("convene")
   .option("--max-rounds <n>", "Max deliberation rounds", parseInt)
   .option("--context-budget <n>", "Context budget in bytes", parseInt)
   .option("--max-files <n>", "Max files in context pack", parseInt)
-  .option("--include <glob>", "Include pattern", (val: string, prev: string[]) => [...prev, val], [])
-  .option("--exclude <glob>", "Exclude pattern", (val: string, prev: string[]) => [...prev, val], [])
+  .option(
+    "--include <glob>",
+    "Include pattern",
+    (val: string, prev: string[]) => [...prev, val],
+    [],
+  )
+  .option(
+    "--exclude <glob>",
+    "Exclude pattern",
+    (val: string, prev: string[]) => [...prev, val],
+    [],
+  )
   .option("--no-stream", "Disable streaming output")
   .option("--timeout <ms>", "Per-participant timeout in ms", parseInt)
   .option("--verbose", "Show invocation metadata")
@@ -4981,7 +5126,9 @@ export const conveneCommand = new Command("convene")
     const cliOverrides: Record<string, unknown> = {};
     if (options.maxRounds) {
       (cliOverrides.deliberation ??= {} as Record<string, unknown>) as Record<string, unknown>;
-      (cliOverrides as { deliberation: Record<string, unknown> }).deliberation = { maxRounds: options.maxRounds };
+      (cliOverrides as { deliberation: Record<string, unknown> }).deliberation = {
+        maxRounds: options.maxRounds,
+      };
     }
     const contextOverrides: Record<string, unknown> = {};
     if (options.contextBudget) contextOverrides.budgetBytes = options.contextBudget;
@@ -5006,11 +5153,32 @@ export const conveneCommand = new Command("convene")
     // Create adapters (mock or real)
     const adapters = options.mock
       ? {
-          claude: new MockAdapter({ id: "claude", response: "This is a mock Claude response. In a real session, Claude would analyze the context pack and provide thoughtful feedback.", streamChunks: options.stream !== false }),
-          codex: new MockAdapter({ id: "codex", response: "This is a mock Codex response. In a real session, Codex would provide an independent analysis.", streamChunks: options.stream !== false }),
-          steward: new MockAdapter({ id: "steward", response: JSON.stringify({ status: "concluded", reason: "Mock deliberation complete", summary: "Both mock participants provided placeholder responses. Use real adapters for actual deliberation." }) }),
+          claude: new MockAdapter({
+            id: "claude",
+            response:
+              "This is a mock Claude response. In a real session, Claude would analyze the context pack and provide thoughtful feedback.",
+            streamChunks: options.stream !== false,
+          }),
+          codex: new MockAdapter({
+            id: "codex",
+            response:
+              "This is a mock Codex response. In a real session, Codex would provide an independent analysis.",
+            streamChunks: options.stream !== false,
+          }),
+          steward: new MockAdapter({
+            id: "steward",
+            response: JSON.stringify({
+              status: "concluded",
+              reason: "Mock deliberation complete",
+              summary:
+                "Both mock participants provided placeholder responses. Use real adapters for actual deliberation.",
+            }),
+          }),
         }
-      : (() => { console.error("Error: real adapters not yet implemented. Use --mock for testing."); process.exit(1); })();
+      : (() => {
+          console.error("Error: real adapters not yet implemented. Use --mock for testing.");
+          process.exit(1);
+        })();
 
     const engine = new RoundtableEngine({
       store,
@@ -5070,13 +5238,19 @@ export const conveneCommand = new Command("convene")
       console.log();
       console.log(`Context pack built:`);
       console.log(`  Target: ${contextPack.displayPath}`);
-      console.log(`  Files: ${contextPack.stats.includedFiles} included, ${contextPack.stats.totalFiles - contextPack.stats.includedFiles} omitted`);
-      console.log(`  Size: ${contextPack.stats.totalBytes.toLocaleString()} bytes (budget: ${contextPack.stats.budgetBytes.toLocaleString()})`);
+      console.log(
+        `  Files: ${contextPack.stats.includedFiles} included, ${contextPack.stats.totalFiles - contextPack.stats.includedFiles} omitted`,
+      );
+      console.log(
+        `  Size: ${contextPack.stats.totalBytes.toLocaleString()} bytes (budget: ${contextPack.stats.budgetBytes.toLocaleString()})`,
+      );
       console.log();
       if (contextPack.files.length > 0) {
         console.log("Included files:");
         for (const f of contextPack.files) {
-          console.log(`  [${f.category}] ${f.path} (${(f.bytes / 1024).toFixed(1)}KB)${f.truncated ? " [truncated]" : ""}`);
+          console.log(
+            `  [${f.category}] ${f.path} (${(f.bytes / 1024).toFixed(1)}KB)${f.truncated ? " [truncated]" : ""}`,
+          );
         }
         console.log();
       }
@@ -5126,12 +5300,14 @@ git commit -m "feat(cli): wire convene command with interactive mode, mock adapt
 ### Task 24: Sessions and Show Commands
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/sessions.ts`
 - Modify: `apps/cli/src/commands/show.ts`
 
 - [ ] **Step 1: Implement sessions list and archive**
 
 Replace `apps/cli/src/commands/sessions.ts`:
+
 ```ts
 import { Command } from "commander";
 import { resolveConfig } from "@roundtable/config";
@@ -5186,6 +5362,7 @@ sessionsCommand
 - [ ] **Step 2: Implement show command**
 
 Replace `apps/cli/src/commands/show.ts`:
+
 ```ts
 import { Command } from "commander";
 import { resolveConfig } from "@roundtable/config";
@@ -5247,20 +5424,24 @@ git commit -m "feat(cli): implement sessions list/archive and show commands"
 ### Task 25: Mock-Based Acceptance Test
 
 **Files:**
+
 - Create: `apps/cli/src/__tests__/acceptance.test.ts`
 - Create test fixture directory
 
 - [ ] **Step 1: Create a test fixture**
 
 `packages/context/src/__tests__/fixtures/sample-project/ROUNDTABLE.md`:
+
 ```markdown
 # Roundtable Context
+
 This project is a sample for testing Roundtable's context pack builder.
 ```
 
 - [ ] **Step 2: Write the acceptance test**
 
 `apps/cli/src/__tests__/acceptance.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { RoundtableEngine } from "@roundtable/core";
@@ -5384,12 +5565,14 @@ git commit -m "feat: add mock-backed acceptance test proving full product loop"
 ### Task 26: Base CLI Agent Process Spawner
 
 **Files:**
+
 - Create: `packages/adapters/src/cli-agent.ts`
 - Create: `packages/adapters/src/__tests__/cli-agent.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/adapters/src/__tests__/cli-agent.test.ts`:
+
 ```ts
 import { describe, it, expect } from "vitest";
 import { spawnCliAgent } from "../cli-agent.js";
@@ -5458,6 +5641,7 @@ Expected: FAIL
 - [ ] **Step 3: Implement CLI agent spawner**
 
 `packages/adapters/src/cli-agent.ts`:
+
 ```ts
 import { spawn } from "node:child_process";
 import type { AgentEvent } from "@roundtable/core";
@@ -5589,6 +5773,7 @@ Expected: all 3 tests PASS
 - [ ] **Step 5: Update index.ts**
 
 Add to `packages/adapters/src/index.ts`:
+
 ```ts
 export { spawnCliAgent } from "./cli-agent.js";
 ```
@@ -5605,6 +5790,7 @@ git commit -m "feat(adapters): add base CLI agent process spawner with timeout a
 ### Task 27: Claude and Codex Adapters
 
 **Files:**
+
 - Create: `packages/adapters/src/claude.ts`
 - Create: `packages/adapters/src/codex.ts`
 - Create: `packages/adapters/src/steward-claude.ts`
@@ -5614,6 +5800,7 @@ These adapters wrap `spawnCliAgent` with provider-specific invocation details. T
 - [ ] **Step 1: Implement ClaudeAdapter**
 
 `packages/adapters/src/claude.ts`:
+
 ```ts
 import type { AgentAdapter, AgentInput, AgentEvent, AdapterConfig } from "@roundtable/core";
 import { renderContextPackMarkdown } from "@roundtable/context";
@@ -5640,9 +5827,14 @@ export class ClaudeAdapter implements AgentAdapter {
       .map((t) => `${t.participant}: ${t.content}`)
       .join("\n\n");
 
-    const prompt = [input.systemPrompt, "---", contextMd, "---", "Transcript:", transcriptText].join(
-      "\n\n",
-    );
+    const prompt = [
+      input.systemPrompt,
+      "---",
+      contextMd,
+      "---",
+      "Transcript:",
+      transcriptText,
+    ].join("\n\n");
 
     yield* spawnCliAgent({
       command: this.config.command,
@@ -5660,6 +5852,7 @@ export class ClaudeAdapter implements AgentAdapter {
 - [ ] **Step 2: Implement CodexAdapter**
 
 `packages/adapters/src/codex.ts`:
+
 ```ts
 import type { AgentAdapter, AgentInput, AgentEvent, AdapterConfig } from "@roundtable/core";
 import { renderContextPackMarkdown } from "@roundtable/context";
@@ -5686,9 +5879,14 @@ export class CodexAdapter implements AgentAdapter {
       .map((t) => `${t.participant}: ${t.content}`)
       .join("\n\n");
 
-    const prompt = [input.systemPrompt, "---", contextMd, "---", "Transcript:", transcriptText].join(
-      "\n\n",
-    );
+    const prompt = [
+      input.systemPrompt,
+      "---",
+      contextMd,
+      "---",
+      "Transcript:",
+      transcriptText,
+    ].join("\n\n");
 
     // Codex CLI invocation — flags are provisional, must be verified against installed CLI
     // TODO: pin exact flags during Milestone 6 integration testing
@@ -5708,6 +5906,7 @@ export class CodexAdapter implements AgentAdapter {
 - [ ] **Step 3: Implement StewardAdapter**
 
 `packages/adapters/src/steward-claude.ts`:
+
 ```ts
 import type { AgentAdapter, AgentInput, AgentEvent, AdapterConfig } from "@roundtable/core";
 import { renderContextPackMarkdown } from "@roundtable/context";
@@ -5781,6 +5980,7 @@ git commit -m "feat(adapters): add Claude, Codex, and Steward real CLI adapters"
 ### Task 28: CLI Detection and Error Messages
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/convene.ts`
 
 - [ ] **Step 1: Add CLI detection utility**
@@ -5840,11 +6040,13 @@ git commit -m "feat(cli): add CLI detection with actionable install error messag
 ### Task 29: Config Init Command
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/config.ts`
 
 - [ ] **Step 1: Implement config init**
 
 Update `apps/cli/src/commands/config.ts`:
+
 ```ts
 import { Command } from "commander";
 import { resolveConfig } from "@roundtable/config";
@@ -5951,17 +6153,18 @@ git commit -m "chore: fix lint/format issues across all packages"
 
 This plan implements the complete Roundtable v1 across 30 tasks in 5 phases:
 
-| Phase | Tasks | What it delivers |
-|---|---|---|
-| 1. Foundation | 1-8 | Buildable monorepo, types, schemas, config |
-| 2. Data Layer | 9-16 | Persistence, context pack builder, redaction |
-| 3. Engine | 17-20 | Mock adapters, turn loop, engine orchestrator |
-| 4. CLI | 21-25 | Interactive terminal app, acceptance test |
-| 5. Integration | 26-30 | Real CLI adapters, polish, full verification |
+| Phase          | Tasks | What it delivers                              |
+| -------------- | ----- | --------------------------------------------- |
+| 1. Foundation  | 1-8   | Buildable monorepo, types, schemas, config    |
+| 2. Data Layer  | 9-16  | Persistence, context pack builder, redaction  |
+| 3. Engine      | 17-20 | Mock adapters, turn loop, engine orchestrator |
+| 4. CLI         | 21-25 | Interactive terminal app, acceptance test     |
+| 5. Integration | 26-30 | Real CLI adapters, polish, full verification  |
 
 **Key principle:** The product loop is proven with mock adapters (Phase 3-4) before real Claude/Codex integration (Phase 5). This isolates process-adapter complexity from product-loop bugs.
 
 **Self-review notes (resolved):**
+
 - Git summary populated in context pack builder via `gatherGitSummary()`
 - Lifecycle events emitted: `session_started`, `session_archived`, `context_pack_built`
 - `refreshContext()` method added to `RoundtableEngine`

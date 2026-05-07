@@ -33,13 +33,13 @@ Roundtable is a local-first persistent group chat where Claude and Codex deliber
 
 ## 2. Tech Stack
 
-| Choice | Rationale |
-|---|---|
-| TypeScript | Shared language for CLI + future web UI |
-| Node.js | Default runtime for v1 |
-| pnpm | Workspace-based monorepo management |
-| Zod | Runtime validation for events, config, Steward output |
-| Vitest | Test runner |
+| Choice     | Rationale                                             |
+| ---------- | ----------------------------------------------------- |
+| TypeScript | Shared language for CLI + future web UI               |
+| Node.js    | Default runtime for v1                                |
+| pnpm       | Workspace-based monorepo management                   |
+| Zod        | Runtime validation for events, config, Steward output |
+| Vitest     | Test runner                                           |
 
 Claude and Codex are integrated through their CLI commands as child processes, not through API SDKs. This means the architecture prioritizes process lifecycle management, stdout/stderr parsing, and adapter interfaces over HTTP client configuration.
 
@@ -150,9 +150,9 @@ type EventType =
 
 ```ts
 type SessionEvent = {
-  id: string;                    // unique event id
+  id: string; // unique event id
   type: EventType;
-  timestamp: string;             // ISO 8601
+  timestamp: string; // ISO 8601
   sessionId: string;
   deliberationId?: string;
   contextPackId?: string;
@@ -165,21 +165,21 @@ At the storage boundary (JSONL), `data` is `Record<string, unknown>`. Internally
 
 #### Key event payloads
 
-| Event type | `data` shape |
-|---|---|
-| `user_message` | `{ content: string }` |
-| `agent_invocation_started` | `{ invocationId: string, command: string, pid: number }` |
-| `agent_invocation_metadata` | `{ cwd: string, command: string, args: string[], envKeys: string[] }` |
-| `agent_chunk` | `{ content: string, stream: "stdout" \| "stderr" }` |
-| `agent_response_end` | `{ content: string, durationMs: number, exitCode: number }` |
-| `agent_error` | `{ error: string, stderr?: string, exitCode?: number }` |
-| `agent_invocation_timeout` | `{ durationMs: number, killed: boolean }` |
-| `output_truncated` | `{ stream: "stdout" \| "stderr", originalBytes: number, keptBytes: number }` |
-| `steward_decision` | `StewardDecision` |
-| `steward_parse_error` | `{ rawText: string, parseError: string }` |
-| `context_pack_built` | `{ contextPackId: string, version: number, fileCount: number, totalBytes: number }` |
-| `engine_state_changed` | `{ from: string, to: string, reason: string }` |
-| `deliberation_interrupted` | `{ reason: "user_stop" \| "timeout" \| "double_failure" }` |
+| Event type                  | `data` shape                                                                        |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| `user_message`              | `{ content: string }`                                                               |
+| `agent_invocation_started`  | `{ invocationId: string, command: string, pid: number }`                            |
+| `agent_invocation_metadata` | `{ cwd: string, command: string, args: string[], envKeys: string[] }`               |
+| `agent_chunk`               | `{ content: string, stream: "stdout" \| "stderr" }`                                 |
+| `agent_response_end`        | `{ content: string, durationMs: number, exitCode: number }`                         |
+| `agent_error`               | `{ error: string, stderr?: string, exitCode?: number }`                             |
+| `agent_invocation_timeout`  | `{ durationMs: number, killed: boolean }`                                           |
+| `output_truncated`          | `{ stream: "stdout" \| "stderr", originalBytes: number, keptBytes: number }`        |
+| `steward_decision`          | `StewardDecision`                                                                   |
+| `steward_parse_error`       | `{ rawText: string, parseError: string }`                                           |
+| `context_pack_built`        | `{ contextPackId: string, version: number, fileCount: number, totalBytes: number }` |
+| `engine_state_changed`      | `{ from: string, to: string, reason: string }`                                      |
+| `deliberation_interrupted`  | `{ reason: "user_stop" \| "timeout" \| "double_failure" }`                          |
 
 #### Event ordering
 
@@ -205,7 +205,7 @@ type StewardDecision = {
   summary: string;
   decisionPoint?: string;
   recommendedActions?: string[];
-  nextSpeakerHint?: "claude" | "codex";  // optional, ignored in v1
+  nextSpeakerHint?: "claude" | "codex"; // optional, ignored in v1
 };
 ```
 
@@ -214,11 +214,7 @@ Validated by Zod schema. If parse fails: emit `steward_parse_error`, create a vi
 ### 4.3 Session Model
 
 ```ts
-type SessionRuntimeState =
-  | "awaiting_user"
-  | "deliberating"
-  | "archived"
-  | "error";
+type SessionRuntimeState = "awaiting_user" | "deliberating" | "archived" | "error";
 
 type SessionMeta = {
   id: string;
@@ -261,12 +257,7 @@ type Deliberation = {
 ### 4.5 Transcript Participant
 
 ```ts
-type TranscriptParticipant =
-  | "user"
-  | "claude"
-  | "codex"
-  | "steward"
-  | "roundtable";
+type TranscriptParticipant = "user" | "claude" | "codex" | "steward" | "roundtable";
 ```
 
 `"roundtable"` is used for system-visible errors and engine notices (e.g., "Codex failed to respond: invocation timed out after 120s.").
@@ -307,15 +298,12 @@ type TranscriptParticipant =
 
 ```ts
 interface AgentAdapter {
-  id: string;                        // "claude" | "codex" | "steward"
-  invoke(
-    input: AgentInput,
-    signal?: AbortSignal
-  ): AsyncIterable<AgentEvent>;
+  id: string; // "claude" | "codex" | "steward"
+  invoke(input: AgentInput, signal?: AbortSignal): AsyncIterable<AgentEvent>;
 }
 
 type AgentInput = {
-  invocationId: string;              // stable ID for correlating events/artifacts
+  invocationId: string; // stable ID for correlating events/artifacts
   contextPack: ContextPack;
   transcript: TranscriptMessage[];
   systemPrompt: string;
@@ -339,7 +327,12 @@ type AgentEvent =
   | { type: "response_end"; content: string; durationMs: number; exitCode: number }
   | { type: "error"; error: string; stderr?: string; exitCode?: number }
   | { type: "timeout"; durationMs: number; killed: boolean }
-  | { type: "output_truncated"; stream: "stdout" | "stderr"; originalBytes: number; keptBytes: number };
+  | {
+      type: "output_truncated";
+      stream: "stdout" | "stderr";
+      originalBytes: number;
+      keptBytes: number;
+    };
 ```
 
 The turn loop uses `response_end`, `error`, and `timeout` for state transitions. `chunk` drives streaming display. `invocation_started` and `invocation_metadata` go to the event log and artifacts for debugging.
@@ -386,9 +379,9 @@ v1 supports `read_only` (real CLI) and `mock` (deterministic test responses). Fu
 
 ```ts
 type AdapterLimits = {
-  invocationTimeoutMs: number;     // default: 120_000
-  maxOutputBytes: number;          // default: 512_000
-  gracefulShutdownMs: number;      // default: 5_000
+  invocationTimeoutMs: number; // default: 120_000
+  maxOutputBytes: number; // default: 512_000
+  gracefulShutdownMs: number; // default: 5_000
 };
 ```
 
@@ -425,8 +418,8 @@ Adapters should disable shell/tool execution features wherever supported by the 
 type ContextPack = {
   id: string;
   version: number;
-  targetPath: string;                // metadata only, not an access grant
-  displayPath: string;               // redacted path for prompts
+  targetPath: string; // metadata only, not an access grant
+  displayPath: string; // redacted path for prompts
   createdAt: string;
   config: ContextConfig;
   tree: DirectoryTree;
@@ -442,7 +435,7 @@ type ContextPack = {
 };
 
 type ContextFile = {
-  path: string;                      // relative to targetPath
+  path: string; // relative to targetPath
   category: FileCategory;
   content: string;
   bytes: number;
@@ -506,10 +499,10 @@ This is defense-in-depth, not a replacement for exclusion rules.
 
 ```ts
 type ContextConfig = {
-  budgetBytes: number;             // default: 100_000
-  maxFiles: number;                // default: 50
-  maxFileBytes: number;            // default: 10_000 per file
-  maxTreeDepth: number;            // default: 5
+  budgetBytes: number; // default: 100_000
+  maxFiles: number; // default: 50
+  maxFileBytes: number; // default: 10_000 per file
+  maxTreeDepth: number; // default: 5
   includes?: string[];
   excludes?: string[];
 };
@@ -551,15 +544,19 @@ the full repository. Files were selected by priority within a budget.
 Omitted files are listed below.
 
 ## Target
+
 service-hub
 
 ## Included
+
 ...
 
 ## Omitted
+
 ...
 
 ## Git Summary
+
 ...
 ```
 
@@ -603,7 +600,7 @@ interface RoundtableEngine {
   submitMessage(
     session: Session,
     message: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): AsyncIterable<SessionEvent>;
   refreshContext(session: Session): Promise<ContextPack>;
   archiveSession(session: Session): Promise<void>;
@@ -649,10 +646,10 @@ interface RoundtableEngine {
 
 ```ts
 type DeliberationLimits = {
-  maxRounds: number;                 // default: 2
-  participantTimeoutMs: number;      // default: 120_000
-  deliberationTimeoutMs: number;     // default: 600_000
-  maxTranscriptBytes?: number;       // budget for transcript passed to adapters
+  maxRounds: number; // default: 2
+  participantTimeoutMs: number; // default: 120_000
+  deliberationTimeoutMs: number; // default: 600_000
+  maxTranscriptBytes?: number; // budget for transcript passed to adapters
 };
 ```
 
@@ -663,13 +660,14 @@ Non-negotiable. A Steward "continue" at `round === maxRounds` is overridden with
 ```ts
 function buildTranscript(events: SessionEvent[]): TranscriptMessage[] {
   return events
-    .filter(e =>
-      e.type === "user_message" ||
-      e.type === "agent_response_end" ||
-      e.type === "steward_decision" ||
-      (e.type === "agent_error" && e.participant) // visible failures
+    .filter(
+      (e) =>
+        e.type === "user_message" ||
+        e.type === "agent_response_end" ||
+        e.type === "steward_decision" ||
+        (e.type === "agent_error" && e.participant), // visible failures
     )
-    .map(e => ({
+    .map((e) => ({
       participant: e.participant!,
       content: extractDisplayContent(e),
       timestamp: e.timestamp,
@@ -934,13 +932,13 @@ You MUST NOT direct participants to perform actions outside the deliberation.
 
 ### 9.3 Participant Visibility
 
-| Resource | User | Claude | Codex | Steward |
-|---|---|---|---|---|
-| Context pack | yes | yes | yes | yes |
-| Full transcript | yes | yes | yes | yes |
-| Target folder (direct) | yes (outside RT) | no | no | no |
-| Session artifacts | yes (via CLI) | no | no | no |
-| Other sessions | yes (via CLI) | no | no | no |
+| Resource               | User             | Claude | Codex | Steward |
+| ---------------------- | ---------------- | ------ | ----- | ------- |
+| Context pack           | yes              | yes    | yes   | yes     |
+| Full transcript        | yes              | yes    | yes   | yes     |
+| Target folder (direct) | yes (outside RT) | no     | no    | no      |
+| Session artifacts      | yes (via CLI)    | no     | no    | no      |
+| Other sessions         | yes (via CLI)    | no     | no    | no      |
 
 ### 9.4 Sensitive Data Handling
 
