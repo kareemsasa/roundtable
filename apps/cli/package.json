@@ -1,0 +1,23 @@
+{
+  "name": "@roundtable/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "roundtable": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "node --import tsx src/index.ts"
+  },
+  "dependencies": {
+    "@roundtable/core": "workspace:*",
+    "@roundtable/config": "workspace:*",
+    "@roundtable/persistence": "workspace:*",
+    "@roundtable/context": "workspace:*",
+    "@roundtable/adapters": "workspace:*",
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@roundtable/config",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roundtable/core": "workspace:*",
+    "yaml": "^2.7.0",
+    "zod": "^3.24.0"
+  }
+}
