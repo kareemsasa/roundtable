@@ -81,7 +81,7 @@ export class MockAdapter implements AgentAdapter {
       for (const word of words) {
         yield {
           type: "chunk",
-          content: word,
+          content: word + " ",
           stream: "stdout",
         };
       }

@@ -111,7 +111,9 @@ export async function runInteractive(options: InteractiveOptions): Promise<void>
               `Context refreshed: ${contextPack.stats.includedFiles} files, ${contextPack.stats.totalBytes} bytes`,
             );
           } catch (err) {
-            console.error(`Failed to refresh context: ${err instanceof Error ? err.message : String(err)}`);
+            console.error(
+              `Failed to refresh context: ${err instanceof Error ? err.message : String(err)}`,
+            );
           }
           continue;
         }

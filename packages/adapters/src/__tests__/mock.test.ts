@@ -51,9 +51,9 @@ describe("MockAdapter", () => {
     const chunks = events.filter((e) => e.type === "chunk");
     expect(chunks.length).toBe(3);
     expect(chunks.map((c) => (c as Extract<AgentEvent, { type: "chunk" }>).content)).toEqual([
-      "one",
-      "two",
-      "three",
+      "one ",
+      "two ",
+      "three ",
     ]);
 
     const responseEnd = events.find((e) => e.type === "response_end");

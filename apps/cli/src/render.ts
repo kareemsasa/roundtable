@@ -98,9 +98,7 @@ export function renderEvent(event: SessionEvent, options: RenderOptions): void {
     case "agent_invocation_started": {
       if (options.verbose) {
         const pid = event.data.pid as number;
-        process.stdout.write(
-          `\n${label(event.participant)}: Invocation started (pid: ${pid})\n`,
-        );
+        process.stdout.write(`\n${label(event.participant)}: Invocation started (pid: ${pid})\n`);
       }
       break;
     }
