@@ -18,6 +18,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@roundtable/adapters": "workspace:*"
+    "@roundtable/adapters": "workspace:*",
+    "@roundtable/persistence": "workspace:*"
   }
 }

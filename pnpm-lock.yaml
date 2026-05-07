@@ -97,6 +97,9 @@ importers:
       '@roundtable/adapters':
         specifier: workspace:*
         version: link:../adapters
+      '@roundtable/persistence':
+        specifier: workspace:*
+        version: link:../persistence
 
   packages/persistence:
     dependencies:
