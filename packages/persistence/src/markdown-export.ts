@@ -35,8 +35,26 @@ export function generateTranscriptMarkdown(events: SessionEvent[], sessionId: st
   ];
   for (const event of events) {
     if (!DISPLAY_EVENTS.has(event.type) || !event.participant) continue;
+    // Skip steward's raw agent_response_end; steward_decision carries the rendered output
+    if (event.type === "agent_response_end" && event.participant === "steward") continue;
     const label = PARTICIPANT_LABELS[event.participant] ?? event.participant;
-    lines.push(`**${label}**`, "", extractContent(event), "");
+    const content = extractContent(event);
+    lines.push(`**${label}**`, "", content, "");
+
+    // Render optional steward decision details inline
+    if (event.type === "steward_decision") {
+      const data = event.data as unknown as StewardDecision;
+      if (data.decisionPoint) {
+        lines.push(`**Decision Point:** ${data.decisionPoint}`, "");
+      }
+      if (data.recommendedActions?.length) {
+        lines.push("**Recommended Actions:**", "");
+        for (const action of data.recommendedActions) {
+          lines.push(`- ${action}`);
+        }
+        lines.push("");
+      }
+    }
   }
   return lines.join("\n");
 }

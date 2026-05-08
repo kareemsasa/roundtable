@@ -67,6 +67,92 @@ describe("generateTranscriptMarkdown", () => {
     expect(md).toContain("Claude and Codex disagree on approach");
   });
 
+  it("excludes steward agent_response_end (raw JSON) from transcript", () => {
+    const events: SessionEvent[] = [
+      makeEvent({
+        id: "evt_u",
+        type: "user_message",
+        participant: "user",
+        data: { content: "Hello" },
+      }),
+      makeEvent({
+        id: "evt_sr",
+        type: "agent_response_end",
+        participant: "steward",
+        data: {
+          content: '{"status":"concluded","reason":"done","summary":"All good"}',
+        },
+      }),
+      makeEvent({
+        id: "evt_sd",
+        type: "steward_decision",
+        participant: "steward",
+        data: {
+          status: "concluded",
+          reason: "done",
+          summary: "All good",
+        } as unknown as Record<string, unknown>,
+      }),
+    ];
+
+    const md = generateTranscriptMarkdown(events, "sess_raw");
+    // Raw JSON should NOT appear
+    expect(md).not.toContain('"status"');
+    expect(md).not.toContain('"reason"');
+    expect(md).not.toContain('"summary"');
+    // Rendered summary should appear
+    expect(md).toContain("All good");
+    // Only one Steward section, not two
+    const stewardCount = (md.match(/\*\*Steward\*\*/g) ?? []).length;
+    expect(stewardCount).toBe(1);
+  });
+
+  it("renders decisionPoint and recommendedActions in steward decision", () => {
+    const decision: StewardDecision = {
+      status: "needs_user",
+      reason: "Ambiguous scope",
+      summary: "Need user clarification",
+      decisionPoint: "Should we include the database layer?",
+      recommendedActions: ["Review auth handler", "Check token storage"],
+    };
+    const events: SessionEvent[] = [
+      makeEvent({
+        id: "evt_sd2",
+        type: "steward_decision",
+        participant: "steward",
+        data: decision as unknown as Record<string, unknown>,
+      }),
+    ];
+
+    const md = generateTranscriptMarkdown(events, "sess_detail");
+    expect(md).toContain("Need user clarification");
+    expect(md).toContain("**Decision Point:** Should we include the database layer?");
+    expect(md).toContain("**Recommended Actions:**");
+    expect(md).toContain("- Review auth handler");
+    expect(md).toContain("- Check token storage");
+  });
+
+  it("omits decisionPoint and recommendedActions when not present", () => {
+    const decision: StewardDecision = {
+      status: "concluded",
+      reason: "Done",
+      summary: "All good",
+    };
+    const events: SessionEvent[] = [
+      makeEvent({
+        id: "evt_sd3",
+        type: "steward_decision",
+        participant: "steward",
+        data: decision as unknown as Record<string, unknown>,
+      }),
+    ];
+
+    const md = generateTranscriptMarkdown(events, "sess_nodp");
+    expect(md).toContain("All good");
+    expect(md).not.toContain("**Decision Point:**");
+    expect(md).not.toContain("**Recommended Actions:**");
+  });
+
   it("renders agent errors with Roundtable label", () => {
     const events: SessionEvent[] = [
       makeEvent({

@@ -26,6 +26,8 @@ function extractDisplayContent(event: SessionEvent): string {
 export function buildTranscript(events: SessionEvent[], maxBytes?: number): TranscriptMessage[] {
   const all = events
     .filter((e) => DISPLAY_EVENT_TYPES.has(e.type) && e.participant)
+    // Skip steward's raw agent_response_end; steward_decision carries the rendered output
+    .filter((e) => !(e.type === "agent_response_end" && e.participant === "steward"))
     .map((e) => ({
       participant: e.participant!,
       content: extractDisplayContent(e),

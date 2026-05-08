@@ -34,7 +34,8 @@ export function renderEvent(event: SessionEvent, options: RenderOptions): void {
     }
 
     case "agent_chunk": {
-      if (options.stream) {
+      // Skip steward chunks; steward_decision renders the summary
+      if (options.stream && event.participant !== "steward") {
         // Print header only if participant changed
         if (event.participant !== lastParticipant) {
           process.stdout.write(`\n${label(event.participant)}: `);

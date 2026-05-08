@@ -96,6 +96,37 @@ describe("buildTranscript", () => {
     expect(transcript[transcript.length - 1].content).toBe("D".repeat(100));
   });
 
+  it("excludes steward agent_response_end (raw JSON) from transcript", () => {
+    const events = [
+      makeEvent("user_message", "user", { content: "Hello" }),
+      makeEvent("agent_response_end", "claude", {
+        content: "Hi from Claude",
+        durationMs: 0,
+        exitCode: 0,
+      }),
+      makeEvent("agent_response_end", "steward", {
+        content: '{"status":"concluded","reason":"done","summary":"All good"}',
+        durationMs: 0,
+        exitCode: 0,
+      }),
+      makeEvent("steward_decision", "steward", {
+        status: "concluded",
+        reason: "done",
+        summary: "All good",
+      }),
+    ];
+    const transcript = buildTranscript(events);
+    // Should have 3 entries: user, claude, steward_decision — NOT the raw steward response
+    expect(transcript).toHaveLength(3);
+    expect(transcript[0].content).toBe("Hello");
+    expect(transcript[1].content).toBe("Hi from Claude");
+    expect(transcript[2].content).toBe("All good");
+    // Ensure no raw JSON appears
+    const allContent = transcript.map((t) => t.content).join(" ");
+    expect(allContent).not.toContain('"status"');
+    expect(allContent).not.toContain('"reason"');
+  });
+
   it("returns all messages when budget is not specified", () => {
     const events = [
       makeEvent("user_message", "user", { content: "A".repeat(1000) }),
