@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { resolveConfig } from "@roundtable/config";
+import { resolveConfig, loadConfigFiles } from "@roundtable/config";
 import { FileSessionStore } from "@roundtable/persistence";
 import { buildContextPack } from "@roundtable/context";
 import { MockAdapter, ClaudeAdapter, CodexAdapter, StewardAdapter } from "@roundtable/adapters";
@@ -95,9 +95,13 @@ export const conveneCommand = new Command("convene")
       };
     }
 
-    // 3. Resolve config
+    // 3. Load config files from disk + resolve
+    const targetPath = pathArg ? resolve(pathArg) : undefined;
+    const { globalConfig, projectConfig } = await loadConfigFiles(targetPath);
     const config = resolveConfig({
       env: process.env as Record<string, string | undefined>,
+      globalConfig,
+      projectConfig,
       cliOverrides,
     });
 
@@ -152,7 +156,10 @@ export const conveneCommand = new Command("convene")
     }
 
     // New session: validate path is a directory
-    const targetPath = resolve(pathArg!);
+    if (!targetPath) {
+      console.error("Error: either <path> or --session must be provided.");
+      process.exit(1);
+    }
     try {
       const info = await stat(targetPath);
       if (!info.isDirectory()) {
