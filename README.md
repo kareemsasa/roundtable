@@ -212,12 +212,41 @@ Sessions are stored as directories under `~/.local/share/roundtable/sessions/`:
 - No custom/pluggable agents
 - No Steward permission escalation
 
+## Known Limitations (v1)
+
+- **No OS-level sandboxing** — read-only by design, not by kernel enforcement
+- **Buffered streaming** — CLI output is collected per invocation, not streamed token-by-token in real time
+- **Simple transcript truncation** — long sessions are trimmed with a notice, not summarized intelligently
+- **Codex system prompt is embedded in user prompt** — `codex exec` has no `--system-prompt` flag
+
+## Local Install
+
+**From the repo (recommended for development):**
+
+```bash
+pnpm install && pnpm build
+pnpm roundtable convene ./my-project "question"
+```
+
+**Direct execution (after build):**
+
+```bash
+node apps/cli/dist/index.js convene ./my-project "question"
+```
+
+**Global link (requires PNPM_HOME):**
+
+```bash
+cd apps/cli && pnpm link --global
+roundtable convene ./my-project "question"
+```
+
 ## Development
 
 ```bash
 pnpm install       # install dependencies
 pnpm build         # compile all packages
-pnpm test          # run test suite
+pnpm test          # run test suite (240 tests)
 pnpm lint          # lint
 pnpm format:check  # check formatting
 ```
