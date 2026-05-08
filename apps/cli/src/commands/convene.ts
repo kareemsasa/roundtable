@@ -1,15 +1,20 @@
 import { Command } from "commander";
 import { resolve } from "node:path";
 import { stat } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { resolveConfig } from "@roundtable/config";
 import { FileSessionStore } from "@roundtable/persistence";
 import { buildContextPack } from "@roundtable/context";
-import { MockAdapter } from "@roundtable/adapters";
+import { MockAdapter, ClaudeAdapter, CodexAdapter, StewardAdapter } from "@roundtable/adapters";
 import { RoundtableEngine } from "@roundtable/core";
+import type { AgentAdapter } from "@roundtable/core";
 import { CLAUDE_SYSTEM_PROMPT, CODEX_SYSTEM_PROMPT, STEWARD_SYSTEM_PROMPT } from "../prompts.js";
 import { renderEvent, resetRenderer } from "../render.js";
 import { runInteractive } from "../interactive.js";
 import type { RenderOptions } from "../render.js";
+
+const execFileAsync = promisify(execFile);
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);
@@ -100,34 +105,7 @@ export const conveneCommand = new Command("convene")
     const store = new FileSessionStore(config.dataDir);
 
     // 5. Create adapters
-    if (!options.mock) {
-      console.error("Error: real adapters not yet implemented, use --mock");
-      process.exit(1);
-    }
-
-    const adapters = {
-      claude: new MockAdapter({
-        id: "claude",
-        response:
-          "This is Claude's mock response. I would provide thoughtful analysis of the project based on the context pack.",
-        streamChunks: true,
-      }),
-      codex: new MockAdapter({
-        id: "codex",
-        response:
-          "This is Codex's mock response. I would offer a complementary perspective on the codebase.",
-        streamChunks: true,
-      }),
-      steward: new MockAdapter({
-        id: "steward",
-        response: JSON.stringify({
-          status: "concluded",
-          reason: "Both participants have provided their initial analysis.",
-          summary:
-            "The deliberation has concluded with initial perspectives from both Claude and Codex.",
-        }),
-      }),
-    };
+    const adapters = options.mock ? createMockAdapters() : await createRealAdapters(config);
 
     // 6. Create engine
     const engine = new RoundtableEngine({
@@ -243,3 +221,72 @@ export const conveneCommand = new Command("convene")
 
     await runInteractive({ engine, session, renderOptions, once: options.once ?? false });
   });
+
+// === Adapter factories ===
+
+function createMockAdapters(): {
+  claude: AgentAdapter;
+  codex: AgentAdapter;
+  steward: AgentAdapter;
+} {
+  return {
+    claude: new MockAdapter({
+      id: "claude",
+      response:
+        "This is Claude's mock response. I would provide thoughtful analysis of the project based on the context pack.",
+      streamChunks: true,
+    }),
+    codex: new MockAdapter({
+      id: "codex",
+      response:
+        "This is Codex's mock response. I would offer a complementary perspective on the codebase.",
+      streamChunks: true,
+    }),
+    steward: new MockAdapter({
+      id: "steward",
+      response: JSON.stringify({
+        status: "concluded",
+        reason: "Both participants have provided their initial analysis.",
+        summary:
+          "The deliberation has concluded with initial perspectives from both Claude and Codex.",
+      }),
+    }),
+  };
+}
+
+async function detectCli(command: string, name: string): Promise<void> {
+  try {
+    await execFileAsync(command, ["--version"]);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      console.error(`Error: ${name} CLI not found ('${command}' not in PATH).`);
+      console.error();
+      console.error("To fix this, either:");
+      console.error(`  1. Install the ${name} CLI and ensure it's in your PATH`);
+      console.error(`  2. Set a custom path in roundtable.config.yaml:`);
+      console.error(`       adapters:`);
+      console.error(`         ${name.toLowerCase()}:`);
+      console.error(`           command: /path/to/${command}`);
+      console.error(`  3. Use --mock to run with mock adapters instead`);
+      process.exit(1);
+    }
+    // Other errors (e.g., auth failures) are fine — the CLI exists, it just can't do --version
+    // The adapter will handle auth errors at invocation time
+  }
+}
+
+async function createRealAdapters(
+  config: ReturnType<typeof resolveConfig>,
+): Promise<{ claude: AgentAdapter; codex: AgentAdapter; steward: AgentAdapter }> {
+  // Detect CLIs before creating adapters
+  await detectCli(config.adapters.claude.command, "Claude");
+  await detectCli(config.adapters.codex.command, "Codex");
+  // Steward uses the same command as Claude — no separate detection needed
+
+  return {
+    claude: new ClaudeAdapter(config.adapters.claude, config.dataDir),
+    codex: new CodexAdapter(config.adapters.codex, config.dataDir),
+    steward: new StewardAdapter(config.adapters.steward, config.dataDir),
+  };
+}
