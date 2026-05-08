@@ -62,10 +62,22 @@ export class ClaudeAdapter implements AgentAdapter {
 }
 
 const CLAUDE_ERROR_PATTERNS = [
-  { pattern: /Not logged in/i, message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock." },
-  { pattern: /Please run \/login/i, message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock." },
-  { pattern: /API key.*invalid/i, message: "Claude CLI API key is invalid. Check your authentication, or use --mock." },
-  { pattern: /rate limit/i, message: "Claude CLI rate limit exceeded. Try again later, or use --mock." },
+  {
+    pattern: /Not logged in/i,
+    message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock.",
+  },
+  {
+    pattern: /Please run \/login/i,
+    message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock.",
+  },
+  {
+    pattern: /API key.*invalid/i,
+    message: "Claude CLI API key is invalid. Check your authentication, or use --mock.",
+  },
+  {
+    pattern: /rate limit/i,
+    message: "Claude CLI rate limit exceeded. Try again later, or use --mock.",
+  },
 ];
 
 function detectClaudeError(content: string): string | null {
