@@ -37,8 +37,9 @@ sessionsCommand
     try {
       await store.updateMeta(id, { status: "archived", updatedAt: new Date().toISOString() });
       console.log(`Session ${id} archived.`);
-    } catch (err) {
-      console.error(`Error: could not archive session ${id}: ${(err as Error).message}`);
+    } catch {
+      console.error(`Error: session '${id}' not found.`);
+      console.error("Use 'roundtable sessions list' to see available sessions.");
       process.exit(1);
     }
   });

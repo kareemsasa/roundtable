@@ -32,11 +32,18 @@ export const showCommand = new Command("show")
       }
 
       try {
+        // Verify session exists before loading events
+        await store.loadSession(sessionId!);
         const events = await store.loadEvents(sessionId!);
+        if (events.length === 0) {
+          console.log(`Session ${sessionId} exists but has no events.`);
+          return;
+        }
         const md = generateTranscriptMarkdown(events, sessionId!);
         console.log(md);
-      } catch (err) {
-        console.error(`Error: could not load session ${sessionId}: ${(err as Error).message}`);
+      } catch {
+        console.error(`Error: session '${sessionId}' not found.`);
+        console.error("Use 'roundtable sessions list' to see available sessions.");
         process.exit(1);
       }
     },

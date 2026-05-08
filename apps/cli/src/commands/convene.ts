@@ -143,10 +143,9 @@ export const conveneCommand = new Command("convene")
         }
 
         await runInteractive({ engine, session, renderOptions, once: options.once ?? false });
-      } catch (err) {
-        console.error(
-          `Error resuming session: ${err instanceof Error ? err.message : String(err)}`,
-        );
+      } catch {
+        console.error(`Error: session '${options.session}' not found.`);
+        console.error("Use 'roundtable sessions list' to see available sessions.");
         process.exit(1);
       }
       return;

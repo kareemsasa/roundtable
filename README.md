@@ -68,31 +68,31 @@ roundtable convene --session <id> [message]
 
 **Flags:**
 
-| Flag | Description |
-|---|---|
-| `--mock` | Use mock adapters (no auth required) |
-| `--once` | Run one deliberation and exit |
-| `--dry-run` | Preview context pack without invoking |
-| `--session <id>` | Resume an existing session |
-| `--max-rounds <n>` | Max deliberation rounds (default: 2) |
+| Flag                   | Description                               |
+| ---------------------- | ----------------------------------------- |
+| `--mock`               | Use mock adapters (no auth required)      |
+| `--once`               | Run one deliberation and exit             |
+| `--dry-run`            | Preview context pack without invoking     |
+| `--session <id>`       | Resume an existing session                |
+| `--max-rounds <n>`     | Max deliberation rounds (default: 2)      |
 | `--context-budget <n>` | Context budget in bytes (default: 100000) |
-| `--max-files <n>` | Max files in context pack (default: 50) |
-| `--include <glob>` | Include file pattern (repeatable) |
-| `--exclude <glob>` | Exclude file pattern (repeatable) |
-| `--no-stream` | Wait for full responses |
-| `--timeout <ms>` | Per-participant timeout |
-| `--verbose` | Show invocation metadata |
+| `--max-files <n>`      | Max files in context pack (default: 50)   |
+| `--include <glob>`     | Include file pattern (repeatable)         |
+| `--exclude <glob>`     | Exclude file pattern (repeatable)         |
+| `--no-stream`          | Wait for full responses                   |
+| `--timeout <ms>`       | Per-participant timeout                   |
+| `--verbose`            | Show invocation metadata                  |
 
 **Interactive commands** (during a session):
 
-| Command | Action |
-|---|---|
-| `/help` | Show available commands |
-| `/exit` | Leave the room (session preserved) |
-| `/stop` | Interrupt active deliberation |
-| `/status` | Show session info |
-| `/refresh-context` | Rebuild context pack |
-| `/transcript` | Display session transcript |
+| Command            | Action                             |
+| ------------------ | ---------------------------------- |
+| `/help`            | Show available commands            |
+| `/exit`            | Leave the room (session preserved) |
+| `/stop`            | Interrupt active deliberation      |
+| `/status`          | Show session info                  |
+| `/refresh-context` | Rebuild context pack               |
+| `/transcript`      | Display session transcript         |
 
 ### `sessions` - Manage sessions
 
@@ -138,9 +138,9 @@ deliberation:
 
 adapters:
   claude:
-    command: claude        # path to Claude CLI
+    command: claude # path to Claude CLI
   codex:
-    command: codex         # path to Codex CLI
+    command: codex # path to Codex CLI
 ```
 
 Set `ROUNDTABLE_HOME` to override the default data directory (`~/.local/share/roundtable`).
