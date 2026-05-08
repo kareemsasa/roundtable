@@ -44,11 +44,16 @@ export class StewardAdapter implements AgentAdapter {
         stdin: prompt,
       })) {
         if (event.type === "response_end") {
-          // Clean up the response content: strip markdown fences, trim
-          yield {
-            ...event,
-            content: cleanJsonResponse(event.content),
-          };
+          const authError = detectClaudeError(event.content);
+          if (authError) {
+            yield { type: "error", error: authError, stderr: event.content, exitCode: 0 };
+          } else {
+            // Clean up the response content: strip markdown fences, trim
+            yield {
+              ...event,
+              content: cleanJsonResponse(event.content),
+            };
+          }
         } else {
           yield event;
         }
@@ -57,6 +62,20 @@ export class StewardAdapter implements AgentAdapter {
       await rm(cwd, { recursive: true, force: true }).catch(() => {});
     }
   }
+}
+
+const CLAUDE_ERROR_PATTERNS = [
+  { pattern: /Not logged in/i, message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock." },
+  { pattern: /Please run \/login/i, message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock." },
+  { pattern: /API key.*invalid/i, message: "Claude CLI API key is invalid. Check your authentication, or use --mock." },
+  { pattern: /rate limit/i, message: "Claude CLI rate limit exceeded. Try again later, or use --mock." },
+];
+
+function detectClaudeError(content: string): string | null {
+  for (const { pattern, message } of CLAUDE_ERROR_PATTERNS) {
+    if (pattern.test(content)) return message;
+  }
+  return null;
 }
 
 function buildStewardPrompt(input: AgentInput): string {

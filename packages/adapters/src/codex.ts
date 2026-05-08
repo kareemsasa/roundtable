@@ -21,7 +21,7 @@ export class CodexAdapter implements AgentAdapter {
     try {
       const prompt = buildPrompt(input);
 
-      yield* spawnCliAgent({
+      for await (const event of spawnCliAgent({
         command: this.config.command,
         args: [
           "exec",
@@ -33,6 +33,7 @@ export class CodexAdapter implements AgentAdapter {
           "--skip-git-repo-check",
           "--cd",
           cwd,
+          "--json",
           "-", // read prompt from stdin
         ],
         cwd,
@@ -41,12 +42,44 @@ export class CodexAdapter implements AgentAdapter {
         gracefulShutdownMs: this.config.limits.gracefulShutdownMs,
         signal,
         stdin: prompt,
-      });
+      })) {
+        if (event.type === "response_end") {
+          const cleaned = extractCodexResponse(event.content);
+          yield { ...event, content: cleaned };
+        } else {
+          yield event;
+        }
+      }
     } finally {
       // Clean up temp dir
       await rm(cwd, { recursive: true, force: true }).catch(() => {});
     }
   }
+}
+
+/**
+ * Parse Codex --json JSONL output to extract the actual response text.
+ * Codex emits events like:
+ *   {"type":"item.completed","item":{"text":"response here"}}
+ * We concatenate all item.completed texts.
+ */
+function extractCodexResponse(rawOutput: string): string {
+  const lines = rawOutput.trim().split("\n");
+  const texts: string[] = [];
+
+  for (const line of lines) {
+    try {
+      const event = JSON.parse(line);
+      if (event.type === "item.completed" && event.item?.text) {
+        texts.push(event.item.text);
+      }
+    } catch {
+      // Skip non-JSON lines
+    }
+  }
+
+  // If we found structured response text, use it; otherwise fall back to raw output
+  return texts.length > 0 ? texts.join("\n") : rawOutput;
 }
 
 function buildPrompt(input: AgentInput): string {

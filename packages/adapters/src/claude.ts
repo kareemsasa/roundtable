@@ -21,7 +21,7 @@ export class ClaudeAdapter implements AgentAdapter {
     try {
       const prompt = buildPrompt(input);
 
-      yield* spawnCliAgent({
+      for await (const event of spawnCliAgent({
         command: this.config.command,
         args: [
           "--print",
@@ -42,12 +42,37 @@ export class ClaudeAdapter implements AgentAdapter {
         gracefulShutdownMs: this.config.limits.gracefulShutdownMs,
         signal,
         stdin: prompt,
-      });
+      })) {
+        if (event.type === "response_end") {
+          const authError = detectClaudeError(event.content);
+          if (authError) {
+            yield { type: "error", error: authError, stderr: event.content, exitCode: 0 };
+          } else {
+            yield event;
+          }
+        } else {
+          yield event;
+        }
+      }
     } finally {
       // Clean up temp dir
       await rm(cwd, { recursive: true, force: true }).catch(() => {});
     }
   }
+}
+
+const CLAUDE_ERROR_PATTERNS = [
+  { pattern: /Not logged in/i, message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock." },
+  { pattern: /Please run \/login/i, message: "Claude CLI authentication required. Run 'claude auth' to log in, or use --mock." },
+  { pattern: /API key.*invalid/i, message: "Claude CLI API key is invalid. Check your authentication, or use --mock." },
+  { pattern: /rate limit/i, message: "Claude CLI rate limit exceeded. Try again later, or use --mock." },
+];
+
+function detectClaudeError(content: string): string | null {
+  for (const { pattern, message } of CLAUDE_ERROR_PATTERNS) {
+    if (pattern.test(content)) return message;
+  }
+  return null;
 }
 
 function buildPrompt(input: AgentInput): string {

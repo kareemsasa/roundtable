@@ -325,6 +325,113 @@ process.stdin.on("end", () => {
     }
   }, 10_000);
 
+  it("args include --json flag", async () => {
+    const fakeCmd = await createFakeCodex(tmpBase, "echo");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    const metadata = events.find((e) => e.type === "invocation_metadata");
+    expect(metadata).toBeDefined();
+    if (metadata?.type === "invocation_metadata") {
+      expect(metadata.args).toContain("--json");
+    }
+  });
+
+  it("extracts response from --json JSONL output", async () => {
+    const jsonOutput = [
+      '{"type":"thread.started","thread_id":"test-123"}',
+      '{"type":"turn.started"}',
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The answer is 42"}}',
+      '{"type":"turn.completed","usage":{"input_tokens":100,"output_tokens":5}}',
+    ].join("\n");
+
+    const scriptPath = join(tmpBase, "fake-codex-jsonl");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write(${JSON.stringify(jsonOutput)});
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).toBe("The answer is 42");
+      expect(responseEnd.content).not.toContain("item.completed");
+    }
+  });
+
+  it("concatenates multiple item.completed texts", async () => {
+    const jsonOutput = [
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"First part"}}',
+      '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Second part"}}',
+    ].join("\n");
+
+    const scriptPath = join(tmpBase, "fake-codex-multi");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write(${JSON.stringify(jsonOutput)});
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).toBe("First part\nSecond part");
+    }
+  });
+
+  it("falls back to raw output if no item.completed events found", async () => {
+    const rawText = "Just some plain text response";
+
+    const scriptPath = join(tmpBase, "fake-codex-raw");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write(${JSON.stringify(rawText)});
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).toBe(rawText);
+    }
+  });
+
   it("temp cwd is created and cleaned up", async () => {
     const fakeCmd = await createFakeCodex(tmpBase, "echo");
     const dataDir = join(tmpBase, "data");

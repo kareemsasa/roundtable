@@ -251,6 +251,36 @@ describe("StewardAdapter", () => {
     }
   });
 
+  it("detects 'Not logged in' as auth error", async () => {
+    const scriptPath = join(tmpBase, "fake-steward-auth-error");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write("Not logged in \\u00b7 Please run /login");
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new StewardAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    // Should NOT have response_end
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeUndefined();
+
+    // Should have error event
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeDefined();
+    if (errorEvent?.type === "error") {
+      expect(errorEvent.error).toContain("authentication required");
+      expect(errorEvent.exitCode).toBe(0);
+      expect(errorEvent.stderr).toContain("Not logged in");
+    }
+  });
+
   it("non-zero exit yields error event", async () => {
     const scriptPath = join(tmpBase, "fake-steward-error");
     const script = `#!/usr/bin/env node

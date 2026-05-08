@@ -15,8 +15,11 @@ async function collectEvents(iter: AsyncIterable<AgentEvent>): Promise<AgentEven
 }
 
 /** Create a fake "claude" executable (Node script) with configurable behavior */
-async function createFakeClaude(dir: string, behavior: "echo" | "error" | "hang"): Promise<string> {
-  const scriptPath = join(dir, "fake-claude");
+async function createFakeClaude(
+  dir: string,
+  behavior: "echo" | "error" | "hang" | "auth-error" | "rate-limit",
+): Promise<string> {
+  const scriptPath = join(dir, `fake-claude-${behavior}`);
   let script: string;
 
   if (behavior === "echo") {
@@ -31,6 +34,20 @@ process.stdin.on("end", () => {
     script = `#!/usr/bin/env node
 process.stderr.write("Claude CLI error: not authenticated");
 process.exit(1);
+`;
+  } else if (behavior === "auth-error") {
+    script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write("Not logged in \\u00b7 Please run /login");
+});
+`;
+  } else if (behavior === "rate-limit") {
+    script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write("Error: rate limit exceeded, please try again later");
+});
 `;
   } else {
     // hang — for timeout testing
@@ -276,6 +293,69 @@ describe("ClaudeAdapter", () => {
       expect(metadata.args).toContain("");
       expect(metadata.args).toContain("--system-prompt");
     }
+  });
+
+  it("detects 'Not logged in' as auth error", async () => {
+    const fakeCmd = await createFakeClaude(tmpBase, "auth-error");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    // Should NOT have a response_end event
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeUndefined();
+
+    // Should have an error event with auth message
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeDefined();
+    if (errorEvent?.type === "error") {
+      expect(errorEvent.error).toContain("authentication required");
+      expect(errorEvent.exitCode).toBe(0);
+      expect(errorEvent.stderr).toContain("Not logged in");
+    }
+  });
+
+  it("detects rate limit as error", async () => {
+    const fakeCmd = await createFakeClaude(tmpBase, "rate-limit");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeUndefined();
+
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeDefined();
+    if (errorEvent?.type === "error") {
+      expect(errorEvent.error).toContain("rate limit");
+      expect(errorEvent.exitCode).toBe(0);
+    }
+  });
+
+  it("passes through normal responses without error detection", async () => {
+    const fakeCmd = await createFakeClaude(tmpBase, "echo");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    // Should have response_end, NOT error
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeUndefined();
   });
 
   it("system prompt is passed via --system-prompt flag", async () => {
