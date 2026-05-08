@@ -283,7 +283,7 @@ describe("ClaudeAdapter", () => {
     expect(metadata).toBeDefined();
     if (metadata?.type === "invocation_metadata") {
       expect(metadata.args).toContain("--print");
-      expect(metadata.args).toContain("--bare");
+      expect(metadata.args).not.toContain("--bare");
       expect(metadata.args).toContain("--no-session-persistence");
       expect(metadata.args).toContain("--permission-mode");
       expect(metadata.args).toContain("plan");
@@ -356,6 +356,25 @@ describe("ClaudeAdapter", () => {
 
     const errorEvent = events.find((e) => e.type === "error");
     expect(errorEvent).toBeUndefined();
+  });
+
+  it("auth error stdout does not emit chunks (no speech leak)", async () => {
+    const fakeCmd = await createFakeClaude(tmpBase, "auth-error");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    // Should have an error event
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeDefined();
+
+    // Should NOT have any stdout chunks (auth text must not render as speech)
+    const stdoutChunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
+    expect(stdoutChunks).toHaveLength(0);
   });
 
   it("system prompt is passed via --system-prompt flag", async () => {

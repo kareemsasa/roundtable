@@ -342,6 +342,42 @@ process.stdin.on("end", () => {
     }
   });
 
+  it("JSONL stdout chunks are not emitted as display chunks", async () => {
+    const jsonOutput = [
+      '{"type":"thread.started","thread_id":"test-123"}',
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The answer is 42"}}',
+    ].join("\n");
+
+    const scriptPath = join(tmpBase, "fake-codex-jsonl-chunks");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write(${JSON.stringify(jsonOutput)});
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    // Should NOT have any stdout chunks (raw JSONL must not leak to display)
+    const stdoutChunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
+    expect(stdoutChunks).toHaveLength(0);
+
+    // Should still have a clean response_end with extracted text
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).toBe("The answer is 42");
+      expect(responseEnd.content).not.toContain("item.completed");
+    }
+  });
+
   it("extracts response from --json JSONL output", async () => {
     const jsonOutput = [
       '{"type":"thread.started","thread_id":"test-123"}',

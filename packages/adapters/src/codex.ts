@@ -43,7 +43,11 @@ export class CodexAdapter implements AgentAdapter {
         signal,
         stdin: prompt,
       })) {
-        if (event.type === "response_end") {
+        if (event.type === "chunk" && event.stream === "stdout") {
+          // Suppress raw JSONL stdout chunks from display output.
+          // The clean assistant text is extracted in response_end instead.
+          continue;
+        } else if (event.type === "response_end") {
           const cleaned = extractCodexResponse(event.content);
           yield { ...event, content: cleaned };
         } else {

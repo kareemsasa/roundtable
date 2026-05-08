@@ -21,6 +21,10 @@ export class ClaudeAdapter implements AgentAdapter {
     try {
       const prompt = buildPrompt(input);
 
+      // Buffer stdout chunks so auth/error text is never emitted as speech.
+      // If response_end detects an error, suppress the chunks and yield an error event instead.
+      const bufferedChunks: AgentEvent[] = [];
+
       for await (const event of spawnCliAgent({
         command: this.config.command,
         args: [
@@ -30,7 +34,6 @@ export class ClaudeAdapter implements AgentAdapter {
           "--output-format",
           "text",
           "--no-session-persistence",
-          "--bare",
           "--permission-mode",
           "plan",
           "--tools",
@@ -43,11 +46,14 @@ export class ClaudeAdapter implements AgentAdapter {
         signal,
         stdin: prompt,
       })) {
-        if (event.type === "response_end") {
+        if (event.type === "chunk" && event.stream === "stdout") {
+          bufferedChunks.push(event);
+        } else if (event.type === "response_end") {
           const authError = detectClaudeError(event.content);
           if (authError) {
             yield { type: "error", error: authError, stderr: event.content, exitCode: 0 };
           } else {
+            for (const chunk of bufferedChunks) yield chunk;
             yield event;
           }
         } else {

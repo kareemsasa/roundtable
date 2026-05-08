@@ -251,6 +251,58 @@ describe("StewardAdapter", () => {
     }
   });
 
+  it("args do not include --bare", async () => {
+    const decision = JSON.stringify({
+      status: "concluded",
+      reason: "done",
+      summary: "ok",
+    });
+    const fakeCmd = await createFakeSteward(tmpBase, decision);
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new StewardAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    const metadata = events.find((e) => e.type === "invocation_metadata");
+    expect(metadata).toBeDefined();
+    if (metadata?.type === "invocation_metadata") {
+      expect(metadata.args).not.toContain("--bare");
+      expect(metadata.args).toContain("--print");
+      expect(metadata.args).toContain("--no-session-persistence");
+      expect(metadata.args).toContain("--permission-mode");
+      expect(metadata.args).toContain("--tools");
+    }
+  });
+
+  it("auth error stdout does not emit chunks (no speech leak)", async () => {
+    const scriptPath = join(tmpBase, "fake-steward-auth-leak");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write("Not logged in \\u00b7 Please run /login");
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new StewardAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    // Should have an error event
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeDefined();
+    if (errorEvent?.type === "error") {
+      expect(errorEvent.error).toContain("authentication required");
+    }
+
+    // Should NOT have any stdout chunks (auth text must not render as speech)
+    const stdoutChunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
+    expect(stdoutChunks).toHaveLength(0);
+  });
+
   it("detects 'Not logged in' as auth error", async () => {
     const scriptPath = join(tmpBase, "fake-steward-auth-error");
     const script = `#!/usr/bin/env node
