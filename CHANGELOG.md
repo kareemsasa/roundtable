@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.8 — 2026-05-09
+
+- Derive session titles from the first user message
+- Truncate at word boundary around 80 characters
+- Preserve existing titles on resumed sessions
+- `sessions list` now shows meaningful titles instead of `(untitled)`
+- 324 tests
+
 ## v0.1.7 — 2026-05-09
 
 - Surface `output_truncated` warnings on stderr with participant, stream, and byte counts
