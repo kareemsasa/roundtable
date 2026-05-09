@@ -14,14 +14,23 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b",
-    "roundtable": "node apps/cli/dist/index.js"
+    "roundtable": "node apps/cli/dist/index.js",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,yaml,yml,css,html}": "prettier --write"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^25.6.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
+    "lint-staged": "^17.0.3",
     "prettier": "^3.0.0",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^3.0.0"

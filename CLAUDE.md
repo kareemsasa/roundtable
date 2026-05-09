@@ -20,6 +20,10 @@ Local-first CLI group chat for AI deliberation. Claude and Codex respond to user
 - `packages/context` — folder scanning, context pack builder
 - `packages/adapters` — mock and real CLI process adapters
 
+## Local Setup
+
+After cloning, run `pnpm install` — this installs dependencies and sets up the pre-commit hook (Prettier via `simple-git-hooks` + `lint-staged`).
+
 ## Conventions
 
 - ESM only (`"type": "module"`)
