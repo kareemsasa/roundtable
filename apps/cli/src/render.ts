@@ -109,6 +109,17 @@ export function renderEvent(event: SessionEvent, options: RenderOptions): void {
       break;
     }
 
+    case "output_truncated": {
+      const stream = event.data.stream as string;
+      const originalBytes = event.data.originalBytes as number;
+      const keptBytes = event.data.keptBytes as number;
+      const who = event.participant ? `${label(event.participant)} ` : "";
+      process.stderr.write(
+        `\nRoundtable [warning]: ${who}${stream} output truncated: kept ${keptBytes} of ${originalBytes} bytes.\n`,
+      );
+      break;
+    }
+
     default:
       // Other event types are silently ignored
       break;

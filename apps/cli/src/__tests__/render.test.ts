@@ -19,24 +19,37 @@ function makeEvent(
 
 describe("renderEvent", () => {
   let stdoutChunks: string[];
-  let originalWrite: typeof process.stdout.write;
+  let stderrChunks: string[];
+  let originalStdoutWrite: typeof process.stdout.write;
+  let originalStderrWrite: typeof process.stderr.write;
 
   beforeEach(() => {
     resetRenderer();
     stdoutChunks = [];
-    originalWrite = process.stdout.write;
+    stderrChunks = [];
+    originalStdoutWrite = process.stdout.write;
+    originalStderrWrite = process.stderr.write;
     process.stdout.write = vi.fn((chunk: string | Uint8Array) => {
       stdoutChunks.push(String(chunk));
       return true;
     }) as typeof process.stdout.write;
+    process.stderr.write = vi.fn((chunk: string | Uint8Array) => {
+      stderrChunks.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
   });
 
   afterEach(() => {
-    process.stdout.write = originalWrite;
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
   });
 
   function rendered(): string {
     return stdoutChunks.join("");
+  }
+
+  function renderedStderr(): string {
+    return stderrChunks.join("");
   }
 
   const streamOpts: RenderOptions = { verbose: false, stream: true };
@@ -129,5 +142,57 @@ describe("renderEvent", () => {
     expect(output).toContain("Consensus reached");
     expect(output).not.toContain('"status"');
     expect(output).not.toContain('"concluded"');
+  });
+
+  describe("output_truncated warnings", () => {
+    const truncatedEvent = makeEvent("output_truncated", "claude", {
+      stream: "stdout",
+      originalBytes: 640000,
+      keptBytes: 524288,
+    });
+
+    it("renders truncation warning with stream and byte counts", () => {
+      renderEvent(truncatedEvent, streamOpts);
+      const output = renderedStderr();
+      expect(output).toContain("Roundtable [warning]");
+      expect(output).toContain("stdout");
+      expect(output).toContain("524288");
+      expect(output).toContain("640000");
+    });
+
+    it("includes participant name in warning", () => {
+      renderEvent(truncatedEvent, streamOpts);
+      const output = renderedStderr();
+      expect(output).toContain("Claude");
+    });
+
+    it("does not render as participant speech on stdout", () => {
+      renderEvent(truncatedEvent, streamOpts);
+      // Warning goes to stderr, not stdout — should not appear as participant speech
+      expect(rendered()).toBe("");
+      expect(renderedStderr()).toContain("Roundtable [warning]");
+    });
+
+    it("renders warning in --no-stream mode", () => {
+      renderEvent(truncatedEvent, nonStreamOpts);
+      const output = renderedStderr();
+      expect(output).toContain("Roundtable [warning]");
+      expect(output).toContain("truncated");
+      expect(output).toContain("524288");
+    });
+
+    it("renders generic warning when participant is not set", () => {
+      const noParticipant = makeEvent("output_truncated", undefined, {
+        stream: "stderr",
+        originalBytes: 100000,
+        keptBytes: 50000,
+      });
+      renderEvent(noParticipant, streamOpts);
+      const output = renderedStderr();
+      expect(output).toContain("Roundtable [warning]");
+      expect(output).toContain("stderr");
+      expect(output).not.toContain("Claude");
+      expect(output).not.toContain("Codex");
+    });
   });
 });
