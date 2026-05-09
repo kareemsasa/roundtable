@@ -211,8 +211,8 @@ export type AgentEvent =
   | { type: "invocation_started"; command: string; pid: number; timestamp: string }
   | { type: "invocation_metadata"; cwd: string; command: string; args: string[]; envKeys: string[] }
   | { type: "chunk"; content: string; stream: "stdout" | "stderr" }
-  | { type: "response_end"; content: string; durationMs: number; exitCode: number }
-  | { type: "error"; error: string; stderr?: string; exitCode?: number }
+  | { type: "response_end"; content: string; durationMs: number; exitCode: number; stderr?: string }
+  | { type: "error"; error: string; stderr?: string; stdout?: string; exitCode?: number }
   | { type: "timeout"; durationMs: number; killed: boolean }
   | {
       type: "output_truncated";

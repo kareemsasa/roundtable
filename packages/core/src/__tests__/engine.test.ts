@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { RoundtableEngine } from "../engine.js";
 import { MockAdapter } from "@roundtable/adapters";
 import { FileSessionStore } from "@roundtable/persistence";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -213,5 +213,127 @@ describe("RoundtableEngine", () => {
     // Verify context pack can be loaded from store
     const loaded = await store.loadContextPack(session.meta.id, cp2.id);
     expect(loaded.id).toBe(cp2.id);
+  });
+
+  describe("artifact persistence", () => {
+    it("saves stdout.log and meta.json for each successful invocation", async () => {
+      const cp = mockContextPack();
+      const session = await engine.startSession("/tmp/test-project", cp);
+
+      const events: SessionEvent[] = [];
+      for await (const event of engine.submitMessage(session, "Review the code.")) {
+        events.push(event);
+      }
+
+      // Find invocationIds from agent_response_end events
+      const responseEnds = events.filter((e) => e.type === "agent_response_end");
+      expect(responseEnds.length).toBeGreaterThanOrEqual(3); // claude + codex + steward
+
+      const artifactsRoot = join(dataDir, "sessions", session.meta.id, "artifacts");
+
+      // Check each participant has artifact files
+      for (const participant of ["claude", "codex", "steward"]) {
+        const participantDir = join(artifactsRoot, participant);
+        const files = await readdir(participantDir);
+
+        // Should have at least meta.json and stdout.log
+        const metaFiles = files.filter((f) => f.endsWith(".meta.json"));
+        const stdoutFiles = files.filter((f) => f.endsWith(".stdout.log"));
+        expect(metaFiles.length).toBeGreaterThanOrEqual(1);
+        expect(stdoutFiles.length).toBeGreaterThanOrEqual(1);
+
+        // Verify meta.json content
+        const metaContent = JSON.parse(await readFile(join(participantDir, metaFiles[0]), "utf-8"));
+        expect(metaContent.invocationId).toBeDefined();
+        expect(metaContent.command).toBeDefined();
+        expect(metaContent.exitCode).toBe(0);
+        expect(metaContent.durationMs).toBeDefined();
+
+        // Verify stdout.log content
+        const stdout = await readFile(join(participantDir, stdoutFiles[0]), "utf-8");
+        expect(stdout.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("saves stderr.log and meta.json for error invocations", async () => {
+      const errorEngine = new RoundtableEngine({
+        store,
+        adapters: {
+          claude: new MockAdapter({ id: "claude", error: "Claude process crashed" }),
+          codex: new MockAdapter({ id: "codex", response: "Codex works fine" }),
+          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+        },
+        config: makeConfig(dataDir),
+      });
+
+      const cp = mockContextPack();
+      const session = await errorEngine.startSession("/tmp/test-project", cp);
+
+      const events: SessionEvent[] = [];
+      for await (const event of errorEngine.submitMessage(session, "Do something.")) {
+        events.push(event);
+      }
+
+      const artifactsRoot = join(dataDir, "sessions", session.meta.id, "artifacts");
+
+      // Claude errored — should have meta.json with error
+      const claudeDir = join(artifactsRoot, "claude");
+      const claudeFiles = await readdir(claudeDir);
+      const claudeMetaFiles = claudeFiles.filter((f) => f.endsWith(".meta.json"));
+      expect(claudeMetaFiles.length).toBe(1);
+
+      const claudeMeta = JSON.parse(await readFile(join(claudeDir, claudeMetaFiles[0]), "utf-8"));
+      expect(claudeMeta.error).toContain("Claude process crashed");
+
+      // Codex succeeded — should have stdout.log
+      const codexDir = join(artifactsRoot, "codex");
+      const codexFiles = await readdir(codexDir);
+      expect(codexFiles.filter((f) => f.endsWith(".stdout.log")).length).toBe(1);
+    });
+
+    it("saves meta.json for timeout invocations", async () => {
+      const timeoutEngine = new RoundtableEngine({
+        store,
+        adapters: {
+          claude: new MockAdapter({ id: "claude", timeout: true }),
+          codex: new MockAdapter({ id: "codex", response: "Codex works" }),
+          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+        },
+        config: makeConfig(dataDir),
+      });
+
+      const cp = mockContextPack();
+      const session = await timeoutEngine.startSession("/tmp/test-project", cp);
+
+      await drain(timeoutEngine.submitMessage(session, "Do something."));
+
+      const claudeDir = join(dataDir, "sessions", session.meta.id, "artifacts", "claude");
+      const claudeFiles = await readdir(claudeDir);
+      const metaFiles = claudeFiles.filter((f) => f.endsWith(".meta.json"));
+      expect(metaFiles.length).toBe(1);
+
+      const meta = JSON.parse(await readFile(join(claudeDir, metaFiles[0]), "utf-8"));
+      expect(meta.timeout).toBe(true);
+      expect(meta.durationMs).toBeDefined();
+    });
+
+    it("includes invocationId in session event data", async () => {
+      const cp = mockContextPack();
+      const session = await engine.startSession("/tmp/test-project", cp);
+
+      const events: SessionEvent[] = [];
+      for await (const event of engine.submitMessage(session, "Check this.")) {
+        events.push(event);
+      }
+
+      // All agent events should have invocationId in data
+      const agentEvents = events.filter((e) =>
+        e.type.startsWith("agent_") || e.type === "output_truncated",
+      );
+      for (const event of agentEvents) {
+        expect(event.data.invocationId).toBeDefined();
+        expect(event.data.invocationId).toMatch(/^inv_/);
+      }
+    });
   });
 });

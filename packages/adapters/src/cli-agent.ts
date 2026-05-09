@@ -250,12 +250,14 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
       content: stdoutContent,
       durationMs,
       exitCode: code,
+      stderr: stderrContent || undefined,
     };
   } else {
     yield {
       type: "error",
       error: stderrContent || `Process exited with code ${code}`,
       stderr: stderrContent || undefined,
+      stdout: stdoutContent || undefined,
       exitCode: code,
     };
   }

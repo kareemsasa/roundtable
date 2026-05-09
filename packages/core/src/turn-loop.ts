@@ -127,7 +127,11 @@ async function invokeAdapter(
       const sessionEvent = makeSessionEvent(
         sessionType,
         sessionId,
-        data as Record<string, unknown>,
+        {
+          ...(data as Record<string, unknown>),
+          invocationId: input.invocationId,
+          ...(isErrorLike ? { sourceParticipant: participant } : {}),
+        },
         {
           deliberationId,
           contextPackId,
@@ -146,7 +150,11 @@ async function invokeAdapter(
     const errorEvent = makeSessionEvent(
       "agent_error",
       sessionId,
-      { error: errorMessage },
+      {
+        error: errorMessage,
+        invocationId: input.invocationId,
+        sourceParticipant: participant,
+      },
       {
         deliberationId,
         contextPackId,
