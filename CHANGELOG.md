@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.9 — 2026-05-09
+
+- Set default `maxTranscriptBytes` to 131,072 (128 KiB)
+- Prevents unbounded transcript growth in long sessions
+- Recent messages preserved; older messages omitted with clear notice
+- 325 tests
+
 ## v0.1.8 — 2026-05-09
 
 - Derive session titles from the first user message
