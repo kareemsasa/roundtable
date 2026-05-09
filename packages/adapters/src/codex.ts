@@ -44,8 +44,10 @@ export class CodexAdapter implements AgentAdapter {
         stdin: prompt,
       })) {
         if (event.type === "chunk" && event.stream === "stdout") {
-          // Suppress raw JSONL stdout chunks from display output.
-          // The clean assistant text is extracted in response_end instead.
+          // Suppress raw JSONL stdout chunks — Codex emits structured JSON
+          // events, not display-safe text. The clean assistant text is
+          // extracted from item.completed events in response_end instead.
+          // See extractCodexResponse() for the observed JSONL format.
           continue;
         } else if (event.type === "response_end") {
           const cleaned = extractCodexResponse(event.content);
@@ -63,9 +65,21 @@ export class CodexAdapter implements AgentAdapter {
 
 /**
  * Parse Codex --json JSONL output to extract the actual response text.
- * Codex emits events like:
- *   {"type":"item.completed","item":{"text":"response here"}}
- * We concatenate all item.completed texts.
+ *
+ * Observed JSONL event sequence (codex exec --json, as of 2026-05-08):
+ *   {"type":"thread.started","thread_id":"..."}
+ *   {"type":"turn.started"}
+ *   {"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"..."}}
+ *   {"type":"turn.completed","usage":{...}}
+ *
+ * Codex does not emit incremental text deltas — the full response text
+ * arrives only in item.completed. Because of this, Codex output remains
+ * display-buffered: stdout chunks are suppressed and the clean text is
+ * extracted here on response_end.
+ *
+ * If Codex adds streaming delta events in the future, the adapter can
+ * parse them incrementally and yield display chunks without changing
+ * the response_end extraction.
  */
 function extractCodexResponse(rawOutput: string): string {
   const lines = rawOutput.trim().split("\n");
