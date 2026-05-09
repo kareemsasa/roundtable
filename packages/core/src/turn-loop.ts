@@ -88,19 +88,13 @@ function mapAgentEventType(agentType: AgentEvent["type"]): EventType {
 }
 
 /**
- * Determine whether an agent invocation resulted in failure.
- * Returns true if the adapter emitted an error or timeout event.
+ * Invoke a single adapter, yielding SessionEvents as they arrive.
+ * Catches thrown exceptions and yields them as agent_error events.
+ *
+ * Callers should track failure by inspecting yielded event types
+ * (agent_error, agent_invocation_timeout).
  */
-type InvokeResult = {
-  failed: boolean;
-  events: SessionEvent[];
-};
-
-/**
- * Invoke a single adapter and collect SessionEvents.
- * Catches thrown exceptions and maps them to agent_error events.
- */
-async function invokeAdapter(
+async function* invokeAdapter(
   adapter: AgentAdapter,
   input: AgentInput,
   participant: TranscriptParticipant,
@@ -108,10 +102,7 @@ async function invokeAdapter(
   deliberationId: string,
   contextPackId: string,
   signal?: AbortSignal,
-): Promise<InvokeResult> {
-  const events: SessionEvent[] = [];
-  let failed = false;
-
+): AsyncGenerator<SessionEvent> {
   try {
     for await (const agentEvent of adapter.invoke(input, signal)) {
       const sessionType = mapAgentEventType(agentEvent.type);
@@ -124,7 +115,7 @@ async function invokeAdapter(
       const { type: _agentType, ...data } = agentEvent;
       void _agentType;
 
-      const sessionEvent = makeSessionEvent(
+      yield makeSessionEvent(
         sessionType,
         sessionId,
         {
@@ -138,16 +129,10 @@ async function invokeAdapter(
           participant: eventParticipant,
         },
       );
-
-      events.push(sessionEvent);
-
-      if (isErrorLike) {
-        failed = true;
-      }
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    const errorEvent = makeSessionEvent(
+    yield makeSessionEvent(
       "agent_error",
       sessionId,
       {
@@ -161,11 +146,12 @@ async function invokeAdapter(
         participant: "roundtable",
       },
     );
-    events.push(errorEvent);
-    failed = true;
   }
+}
 
-  return { failed, events };
+/** Check if a session event indicates invocation failure */
+function isFailureEvent(event: SessionEvent): boolean {
+  return event.type === "agent_error" || event.type === "agent_invocation_timeout";
 }
 
 // === Main Generator ===
@@ -264,7 +250,8 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
       deliberationId,
     };
 
-    const claudeResult = await invokeAdapter(
+    let claudeFailed = false;
+    for await (const event of invokeAdapter(
       adapters.claude,
       claudeInput,
       "claude",
@@ -272,9 +259,9 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
       deliberationId,
       contextPackId,
       signal,
-    );
-    for (const event of claudeResult.events) {
+    )) {
       yield emit(event);
+      if (isFailureEvent(event)) claudeFailed = true;
     }
 
     // --- Invoke Codex ---
@@ -292,7 +279,8 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
       deliberationId,
     };
 
-    const codexResult = await invokeAdapter(
+    let codexFailed = false;
+    for await (const event of invokeAdapter(
       adapters.codex,
       codexInput,
       "codex",
@@ -300,13 +288,13 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
       deliberationId,
       contextPackId,
       signal,
-    );
-    for (const event of codexResult.events) {
+    )) {
       yield emit(event);
+      if (isFailureEvent(event)) codexFailed = true;
     }
 
     // --- Check for double failure ---
-    if (claudeResult.failed && codexResult.failed) {
+    if (claudeFailed && codexFailed) {
       endReason = "double_failure";
       roundsCompleted = round;
       break;
@@ -326,7 +314,8 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
       deliberationId,
     };
 
-    const stewardResult = await invokeAdapter(
+    let stewardFailed = false;
+    for await (const event of invokeAdapter(
       adapters.steward,
       stewardInput,
       "steward",
@@ -334,14 +323,12 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
       deliberationId,
       contextPackId,
       signal,
-    );
-
-    // Emit steward adapter events
-    for (const event of stewardResult.events) {
+    )) {
       yield emit(event);
+      if (isFailureEvent(event)) stewardFailed = true;
     }
 
-    if (stewardResult.failed) {
+    if (stewardFailed) {
       // Steward itself failed (error/timeout) — treat as parse error scenario
       endReason = "steward_error";
       roundsCompleted = round;
@@ -349,7 +336,10 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
     }
 
     // Find the response_end event from the steward to parse the decision
-    const stewardResponseEnd = stewardResult.events.find((e) => e.type === "agent_response_end");
+    const stewardResponseEnd = emittedEvents.find(
+      (e) =>
+        e.type === "agent_response_end" && e.data.invocationId === stewardInput.invocationId,
+    );
     if (!stewardResponseEnd) {
       // No response_end — shouldn't happen if not failed, but handle gracefully
       endReason = "steward_error";
