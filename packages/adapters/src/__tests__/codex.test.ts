@@ -468,6 +468,66 @@ process.stdin.on("end", () => {
     }
   });
 
+  it("strips leading 'Codex:' self-label from response", async () => {
+    const jsonOutput = [
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Codex: Here is my analysis of the code"}}',
+    ].join("\n");
+
+    const scriptPath = join(tmpBase, "fake-codex-self-label");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write(${JSON.stringify(jsonOutput)});
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).toBe("Here is my analysis of the code");
+      expect(responseEnd.content).not.toMatch(/^Codex:/i);
+    }
+  });
+
+  it("does not strip 'Codex' when it appears mid-text", async () => {
+    const jsonOutput = [
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"I think Codex: is a great tool"}}',
+    ].join("\n");
+
+    const scriptPath = join(tmpBase, "fake-codex-mid-label");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write(${JSON.stringify(jsonOutput)});
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+
+    const input = makeAgentInput();
+    const events = await collectEvents(adapter.invoke(input));
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+    if (responseEnd?.type === "response_end") {
+      // Should NOT strip mid-text occurrences
+      expect(responseEnd.content).toBe("I think Codex: is a great tool");
+    }
+  });
+
   it("temp cwd is created and cleaned up", async () => {
     const fakeCmd = await createFakeCodex(tmpBase, "echo");
     const dataDir = join(tmpBase, "data");

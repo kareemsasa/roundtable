@@ -23,11 +23,19 @@ async function createFakeClaude(
   let script: string;
 
   if (behavior === "echo") {
+    // Emits stream-json JSONL with the echoed input as a text delta
     script = `#!/usr/bin/env node
 const chunks = [];
 process.stdin.on("data", d => chunks.push(d));
 process.stdin.on("end", () => {
-  process.stdout.write("Claude response based on: " + Buffer.concat(chunks).toString().slice(0, 100));
+  const input = Buffer.concat(chunks).toString().slice(0, 100);
+  const response = "Claude response based on: " + input;
+  const lines = [
+    JSON.stringify({type: "system", subtype: "init", cwd: "/tmp"}),
+    JSON.stringify({type: "stream_event", event: {type: "content_block_delta", index: 0, delta: {type: "text_delta", text: response}}}),
+    JSON.stringify({type: "result", subtype: "success", is_error: false, result: response}),
+  ];
+  process.stdout.write(lines.join("\\n") + "\\n");
 });
 `;
   } else if (behavior === "error") {
@@ -36,17 +44,24 @@ process.stderr.write("Claude CLI error: not authenticated");
 process.exit(1);
 `;
   } else if (behavior === "auth-error") {
+    // Emits a result event with auth error text
     script = `#!/usr/bin/env node
 process.stdin.resume();
 process.stdin.on("end", () => {
-  process.stdout.write("Not logged in \\u00b7 Please run /login");
+  const lines = [
+    JSON.stringify({type: "result", subtype: "error", is_error: true, result: "Not logged in \\u00b7 Please run /login"}),
+  ];
+  process.stdout.write(lines.join("\\n") + "\\n");
 });
 `;
   } else if (behavior === "rate-limit") {
     script = `#!/usr/bin/env node
 process.stdin.resume();
 process.stdin.on("end", () => {
-  process.stdout.write("Error: rate limit exceeded, please try again later");
+  const lines = [
+    JSON.stringify({type: "result", subtype: "error", is_error: true, result: "Error: rate limit exceeded, please try again later"}),
+  ];
+  process.stdout.write(lines.join("\\n") + "\\n");
 });
 `;
   } else {
@@ -146,11 +161,13 @@ describe("ClaudeAdapter", () => {
     const metadata = events.find((e) => e.type === "invocation_metadata");
     expect(metadata).toBeDefined();
 
-    // Should have response_end with content from the fake claude
+    // Should have response_end with clean content (not raw JSONL)
     const responseEnd = events.find((e) => e.type === "response_end");
     expect(responseEnd).toBeDefined();
     if (responseEnd?.type === "response_end") {
       expect(responseEnd.content).toContain("Claude response based on:");
+      expect(responseEnd.content).not.toContain("stream_event");
+      expect(responseEnd.content).not.toContain("content_block_delta");
       expect(responseEnd.exitCode).toBe(0);
       expect(responseEnd.durationMs).toBeGreaterThanOrEqual(0);
     }
@@ -269,7 +286,7 @@ describe("ClaudeAdapter", () => {
     }
   });
 
-  it("args include expected CLI flags", async () => {
+  it("args include expected CLI flags for stream-json", async () => {
     const fakeCmd = await createFakeClaude(tmpBase, "echo");
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
@@ -283,12 +300,13 @@ describe("ClaudeAdapter", () => {
     expect(metadata).toBeDefined();
     if (metadata?.type === "invocation_metadata") {
       expect(metadata.args).toContain("--print");
-      expect(metadata.args).not.toContain("--bare");
       expect(metadata.args).toContain("--no-session-persistence");
       expect(metadata.args).toContain("--permission-mode");
       expect(metadata.args).toContain("plan");
       expect(metadata.args).toContain("--output-format");
-      expect(metadata.args).toContain("text");
+      expect(metadata.args).toContain("stream-json");
+      expect(metadata.args).toContain("--verbose");
+      expect(metadata.args).toContain("--include-partial-messages");
       expect(metadata.args).toContain("--tools");
       expect(metadata.args).toContain("");
       expect(metadata.args).toContain("--system-prompt");
@@ -358,7 +376,7 @@ describe("ClaudeAdapter", () => {
     expect(errorEvent).toBeUndefined();
   });
 
-  it("auth error stdout does not emit chunks (no speech leak)", async () => {
+  it("auth error does not emit chunks (no speech leak)", async () => {
     const fakeCmd = await createFakeClaude(tmpBase, "auth-error");
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
@@ -377,16 +395,20 @@ describe("ClaudeAdapter", () => {
     expect(stdoutChunks).toHaveLength(0);
   });
 
-  it("streams chunks after prefix buffer is clean", async () => {
-    // Fake claude that emits enough output to exceed prefix buffer (2KB)
+  it("stream-json text deltas are emitted as incremental chunks", async () => {
+    // Fake claude that emits multiple content_block_delta events
     const scriptPath = join(tmpBase, "fake-claude-stream");
     const script = `#!/usr/bin/env node
 process.stdin.resume();
 process.stdin.on("end", () => {
-  // Emit 3KB in small chunks to exceed the 2KB prefix buffer
-  for (let i = 0; i < 30; i++) {
-    process.stdout.write("x".repeat(100) + "\\n");
-  }
+  const lines = [
+    JSON.stringify({type: "system", subtype: "init"}),
+    JSON.stringify({type: "stream_event", event: {type: "content_block_delta", index: 0, delta: {type: "text_delta", text: "Hello "}}}),
+    JSON.stringify({type: "stream_event", event: {type: "content_block_delta", index: 0, delta: {type: "text_delta", text: "world"}}}),
+    JSON.stringify({type: "stream_event", event: {type: "content_block_delta", index: 0, delta: {type: "text_delta", text: "!"}}}),
+    JSON.stringify({type: "result", subtype: "success", is_error: false, result: "Hello world!"}),
+  ];
+  process.stdout.write(lines.join("\\n") + "\\n");
 });
 `;
     await writeFile(scriptPath, script, { mode: 0o755 });
@@ -397,19 +419,22 @@ process.stdin.on("end", () => {
     const adapter = new ClaudeAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
     const events = await collectEvents(adapter.invoke(makeAgentInput()));
 
-    // Should have chunks AND response_end (not error)
+    // Should have 3 chunk events with the delta text
     const chunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
-    expect(chunks.length).toBeGreaterThan(0);
+    expect(chunks).toHaveLength(3);
+    expect(chunks[0].type === "chunk" && chunks[0].content).toBe("Hello ");
+    expect(chunks[1].type === "chunk" && chunks[1].content).toBe("world");
+    expect(chunks[2].type === "chunk" && chunks[2].content).toBe("!");
 
+    // Should have response_end with clean text
     const responseEnd = events.find((e) => e.type === "response_end");
     expect(responseEnd).toBeDefined();
-
-    const errorEvent = events.find((e) => e.type === "error");
-    expect(errorEvent).toBeUndefined();
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).toBe("Hello world!");
+    }
   });
 
-  it("short clean response (< prefix buffer) still yields chunks", async () => {
-    // A short response that doesn't exceed the prefix buffer threshold
+  it("raw stream-json JSONL does not leak into display", async () => {
     const fakeCmd = await createFakeClaude(tmpBase, "echo");
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
@@ -417,7 +442,33 @@ process.stdin.on("end", () => {
     const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
     const events = await collectEvents(adapter.invoke(makeAgentInput()));
 
-    // Chunks should be flushed when response_end arrives
+    // All chunks should contain clean text, not raw JSONL
+    const chunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
+    for (const chunk of chunks) {
+      if (chunk.type === "chunk") {
+        expect(chunk.content).not.toContain('"type":"stream_event"');
+        expect(chunk.content).not.toContain('"type":"result"');
+        expect(chunk.content).not.toContain('"type":"system"');
+      }
+    }
+
+    // response_end content should be clean text
+    const responseEnd = events.find((e) => e.type === "response_end");
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).not.toContain('"type":"stream_event"');
+      expect(responseEnd.content).not.toContain('"type":"result"');
+    }
+  });
+
+  it("short clean response still yields chunks", async () => {
+    const fakeCmd = await createFakeClaude(tmpBase, "echo");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    // At least one chunk from the text delta
     const chunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
     expect(chunks.length).toBeGreaterThan(0);
 

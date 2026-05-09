@@ -337,8 +337,7 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
 
     // Find the response_end event from the steward to parse the decision
     const stewardResponseEnd = emittedEvents.find(
-      (e) =>
-        e.type === "agent_response_end" && e.data.invocationId === stewardInput.invocationId,
+      (e) => e.type === "agent_response_end" && e.data.invocationId === stewardInput.invocationId,
     );
     if (!stewardResponseEnd) {
       // No response_end — shouldn't happen if not failed, but handle gracefully

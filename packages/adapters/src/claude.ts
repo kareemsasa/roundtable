@@ -4,19 +4,6 @@ import { tmpDir } from "@roundtable/persistence";
 import { mkdir, rm } from "node:fs/promises";
 import { spawnCliAgent } from "./cli-agent.js";
 
-/**
- * Prefix buffer size in bytes. Auth/error messages from the Claude CLI appear
- * in the first few hundred bytes. We buffer this much before streaming so that
- * error text is never displayed as participant speech.
- *
- * Caveat: if an error pattern appears *after* the prefix has been flushed and
- * streaming has begun, the user may have already seen partial output. In that
- * case the response_end is still converted to an error event, but the chunks
- * cannot be retracted. This is expected to be rare — auth errors appear
- * immediately, not after 2KB of legitimate output.
- */
-const PREFIX_BUFFER_BYTES = 2048;
-
 export class ClaudeAdapter implements AgentAdapter {
   id = "claude";
   private config: AdapterConfig;
@@ -34,13 +21,16 @@ export class ClaudeAdapter implements AgentAdapter {
     try {
       const prompt = buildPrompt(input);
 
-      // Prefix-buffer strategy: hold the first PREFIX_BUFFER_BYTES of stdout
-      // to check for auth/error patterns before streaming to the consumer.
-      const pendingChunks: AgentEvent[] = [];
-      let prefixBytes = 0;
-      let prefixText = "";
-      let flushed = false;
-      let errorDetected = false;
+      // Line buffer for accumulating partial JSONL lines from stdout chunks.
+      // Node.js child process data events arrive in arbitrary-sized buffers,
+      // not aligned to line boundaries.
+      let lineBuffer = "";
+      // Accumulated display text from content_block_delta events
+      let accumulatedText = "";
+      // Clean result text from the final "result" JSONL event
+      let resultText: string | undefined;
+      // Error detected from the "result" JSONL event
+      let resultError: string | undefined;
 
       for await (const event of spawnCliAgent({
         command: this.config.command,
@@ -49,7 +39,9 @@ export class ClaudeAdapter implements AgentAdapter {
           "--system-prompt",
           input.systemPrompt,
           "--output-format",
-          "text",
+          "stream-json",
+          "--verbose",
+          "--include-partial-messages",
           "--no-session-persistence",
           "--permission-mode",
           "plan",
@@ -64,45 +56,69 @@ export class ClaudeAdapter implements AgentAdapter {
         stdin: prompt,
       })) {
         if (event.type === "chunk" && event.stream === "stdout") {
-          if (errorDetected) {
-            // Error already found in prefix — suppress all subsequent chunks
-            continue;
-          }
+          // Raw JSONL — buffer and parse line by line
+          lineBuffer += event.content;
+          const lines = lineBuffer.split("\n");
+          lineBuffer = lines.pop()!; // keep incomplete last line
 
-          if (!flushed) {
-            // Still in prefix-buffering phase
-            pendingChunks.push(event);
-            prefixBytes += Buffer.byteLength(event.content);
-            prefixText += event.content;
+          for (const line of lines) {
+            const parsed = tryParseJson(line);
+            if (!parsed) continue;
 
-            // Check prefix for errors on every chunk
-            const authError = detectClaudeError(prefixText);
-            if (authError) {
-              errorDetected = true;
-              continue;
+            const delta = extractTextDelta(parsed);
+            if (delta !== null) {
+              accumulatedText += delta;
+              yield { type: "chunk", content: delta, stream: "stdout" };
             }
 
-            // Once we've accumulated enough clean prefix, flush and stream
-            if (prefixBytes >= PREFIX_BUFFER_BYTES) {
-              for (const chunk of pendingChunks) yield chunk;
-              pendingChunks.length = 0;
-              flushed = true;
+            if (parsed.type === "result") {
+              if (parsed.is_error || parsed.subtype !== "success") {
+                resultError =
+                  (parsed.result as string) || (parsed.error as string) || "Claude CLI error";
+              } else {
+                resultText = (parsed.result as string) ?? "";
+              }
             }
-          } else {
-            // Past prefix — pass through directly
-            yield event;
           }
         } else if (event.type === "response_end") {
-          // Always check the full content for errors, even after flushing.
-          const authError = detectClaudeError(event.content);
-          if (authError) {
-            yield { type: "error", error: authError, stderr: event.content, exitCode: 0 };
-          } else {
-            // Flush any remaining buffered chunks (short response < PREFIX_BUFFER_BYTES)
-            if (!flushed) {
-              for (const chunk of pendingChunks) yield chunk;
+          // Process any remaining data in the line buffer
+          if (lineBuffer.trim()) {
+            const parsed = tryParseJson(lineBuffer);
+            if (parsed) {
+              const delta = extractTextDelta(parsed);
+              if (delta !== null) {
+                accumulatedText += delta;
+                yield { type: "chunk", content: delta, stream: "stdout" };
+              }
+              if (parsed.type === "result") {
+                if (parsed.is_error || parsed.subtype !== "success") {
+                  resultError =
+                    (parsed.result as string) || (parsed.error as string) || "Claude CLI error";
+                } else {
+                  resultText = (parsed.result as string) ?? "";
+                }
+              }
             }
-            yield event;
+          }
+
+          if (resultError) {
+            // Error from the result JSONL event (auth, rate limit, etc.)
+            const authError = detectClaudeError(resultError);
+            yield {
+              type: "error",
+              error: authError || resultError,
+              stderr: resultError,
+              exitCode: 0,
+            };
+          } else {
+            // Determine clean content: result text > accumulated deltas > raw output
+            const content = resultText ?? (accumulatedText || event.content);
+            const authError = detectClaudeError(content);
+            if (authError) {
+              yield { type: "error", error: authError, stderr: content, exitCode: 0 };
+            } else {
+              yield { ...event, content };
+            }
           }
         } else {
           yield event;
@@ -139,6 +155,43 @@ function detectClaudeError(content: string): string | null {
     if (pattern.test(content)) return message;
   }
   return null;
+}
+
+/**
+ * Try to parse a JSON line. Returns null for empty or invalid lines.
+ */
+function tryParseJson(line: string): Record<string, unknown> | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract display-safe text from a Claude CLI stream-json event.
+ *
+ * The relevant event shape for streaming text:
+ * ```json
+ * {
+ *   "type": "stream_event",
+ *   "event": {
+ *     "type": "content_block_delta",
+ *     "index": 0,
+ *     "delta": { "type": "text_delta", "text": "..." }
+ *   }
+ * }
+ * ```
+ */
+function extractTextDelta(parsed: Record<string, unknown>): string | null {
+  if (parsed.type !== "stream_event") return null;
+  const evt = parsed.event as Record<string, unknown> | undefined;
+  if (!evt || evt.type !== "content_block_delta") return null;
+  const delta = evt.delta as Record<string, unknown> | undefined;
+  if (!delta || delta.type !== "text_delta") return null;
+  return typeof delta.text === "string" ? delta.text : null;
 }
 
 function buildPrompt(input: AgentInput): string {

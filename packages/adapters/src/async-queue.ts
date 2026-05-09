@@ -5,10 +5,7 @@
  * Producers call push()/end()/error(). Consumers use `for await...of`.
  */
 
-type QueueItem<T> =
-  | { kind: "value"; value: T }
-  | { kind: "end" }
-  | { kind: "error"; error: Error };
+type QueueItem<T> = { kind: "value"; value: T } | { kind: "end" } | { kind: "error"; error: Error };
 
 export class AsyncQueue<T> {
   private buffer: QueueItem<T>[] = [];

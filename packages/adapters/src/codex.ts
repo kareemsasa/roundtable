@@ -97,7 +97,17 @@ function extractCodexResponse(rawOutput: string): string {
   }
 
   // If we found structured response text, use it; otherwise fall back to raw output
-  return texts.length > 0 ? texts.join("\n") : rawOutput;
+  const content = texts.length > 0 ? texts.join("\n") : rawOutput;
+  return stripSelfLabel(content);
+}
+
+/**
+ * Strip leading "Codex: " prefix that models sometimes prepend when they see
+ * transcript messages formatted as "participant: content". Without this, the
+ * renderer produces "Codex: Codex: actual response".
+ */
+function stripSelfLabel(content: string): string {
+  return content.replace(/^codex:\s*/i, "");
 }
 
 function buildPrompt(input: AgentInput): string {
