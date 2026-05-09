@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { RoundtableEngine } from "../engine.js";
+import { RoundtableEngine, deriveSessionTitle } from "../engine.js";
 import { TestAdapter } from "./test-adapter.js";
 import { InMemorySessionStore } from "./in-memory-session-store.js";
 import { randomUUID } from "node:crypto";
@@ -331,6 +331,55 @@ describe("RoundtableEngine", () => {
     });
   });
 
+  describe("session titles", () => {
+    it("sets title from first user message", async () => {
+      const cp = mockContextPack();
+      const session = await engine.startSession("/tmp/test-project", cp);
+
+      expect(session.meta.title).toBeUndefined();
+
+      await drain(engine.submitMessage(session, "Review the auth module"));
+
+      const meta = await store.loadSession(session.meta.id);
+      expect(meta.title).toBe("Review the auth module");
+    });
+
+    it("does not overwrite title on subsequent messages", async () => {
+      const cp = mockContextPack();
+      const session = await engine.startSession("/tmp/test-project", cp);
+
+      await drain(engine.submitMessage(session, "First question"));
+      await drain(engine.submitMessage(session, "Second question"));
+
+      const meta = await store.loadSession(session.meta.id);
+      expect(meta.title).toBe("First question");
+    });
+
+    it("preserves existing title on resumed sessions", async () => {
+      const cp = mockContextPack();
+      const session = await engine.startSession("/tmp/test-project", cp);
+
+      await drain(engine.submitMessage(session, "Original title message"));
+
+      // Resume session
+      const resumed = await engine.resumeSession(session.meta.id);
+      await drain(engine.submitMessage(resumed, "Follow-up message"));
+
+      const meta = await store.loadSession(session.meta.id);
+      expect(meta.title).toBe("Original title message");
+    });
+
+    it("keeps (untitled) for empty messages", async () => {
+      const cp = mockContextPack();
+      const session = await engine.startSession("/tmp/test-project", cp);
+
+      await drain(engine.submitMessage(session, "   "));
+
+      const meta = await store.loadSession(session.meta.id);
+      expect(meta.title).toBeUndefined();
+    });
+  });
+
   describe("session cleanup on failure", () => {
     it("returns to awaiting_user when adapter throws mid-invocation", async () => {
       const throwingAdapter = new TestAdapter({ id: "claude", response: "ok" });
@@ -493,3 +542,45 @@ class FailingSessionStore extends InMemorySessionStore {
     return super.saveArtifact(sessionId, participant, invocationId, filename, content);
   }
 }
+
+describe("deriveSessionTitle", () => {
+  it("returns short messages as-is", () => {
+    expect(deriveSessionTitle("Review the auth module")).toBe("Review the auth module");
+  });
+
+  it("returns undefined for empty input", () => {
+    expect(deriveSessionTitle("")).toBeUndefined();
+    expect(deriveSessionTitle("   ")).toBeUndefined();
+    expect(deriveSessionTitle("\n\t")).toBeUndefined();
+  });
+
+  it("collapses internal whitespace", () => {
+    expect(deriveSessionTitle("hello   world\nfoo")).toBe("hello world foo");
+  });
+
+  it("returns exactly 80-char messages without truncation", () => {
+    const msg = "a".repeat(40) + " " + "b".repeat(39); // 80 chars
+    expect(deriveSessionTitle(msg)).toBe(msg);
+    expect(deriveSessionTitle(msg)!.length).toBe(80);
+  });
+
+  it("truncates long messages at word boundary with ellipsis", () => {
+    const msg =
+      "Can you inspect the current context builder behavior and tell me whether docs are still outranking implementation source files?";
+    const title = deriveSessionTitle(msg)!;
+    expect(title).toMatch(/\.\.\.$/);
+    // Text before "..." should be at most 80 chars
+    const textPart = title.slice(0, -3);
+    expect(textPart.length).toBeLessThanOrEqual(80);
+    // Should end at a complete word, not mid-word
+    expect(textPart).toBe(
+      "Can you inspect the current context builder behavior and tell me whether docs",
+    );
+  });
+
+  it("truncates at limit when no word boundary exists", () => {
+    const msg = "a".repeat(100); // no spaces
+    const title = deriveSessionTitle(msg)!;
+    expect(title).toBe("a".repeat(80) + "...");
+  });
+});

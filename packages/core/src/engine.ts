@@ -24,6 +24,26 @@ Evaluate the transcript and return a JSON object with this shape:
 Respond ONLY with the JSON object, no other text.`,
 };
 
+// === Title Derivation ===
+
+const MAX_TITLE_LENGTH = 80;
+
+/**
+ * Derive a session title from the first user message.
+ * Trims, collapses whitespace, and truncates at a word boundary.
+ * Returns undefined for empty/whitespace-only input.
+ */
+export function deriveSessionTitle(message: string): string | undefined {
+  const cleaned = message.trim().replace(/\s+/g, " ");
+  if (cleaned.length === 0) return undefined;
+  if (cleaned.length <= MAX_TITLE_LENGTH) return cleaned;
+
+  const truncated = cleaned.slice(0, MAX_TITLE_LENGTH);
+  const lastSpace = truncated.lastIndexOf(" ");
+  const breakPoint = lastSpace > 0 ? lastSpace : MAX_TITLE_LENGTH;
+  return cleaned.slice(0, breakPoint) + "...";
+}
+
 // === Options ===
 
 export type EngineOptions = {
@@ -152,12 +172,20 @@ export class RoundtableEngine {
   ): AsyncGenerator<SessionEvent> {
     const { meta } = session;
 
-    // Update status to deliberating
+    // Update status to deliberating; set title from first message if not yet set
     meta.status = "deliberating";
-    await this.store.updateMeta(meta.id, {
+    const metaUpdates: Partial<SessionMeta> = {
       status: "deliberating",
       updatedAt: new Date().toISOString(),
-    });
+    };
+    if (!meta.title) {
+      const title = deriveSessionTitle(message);
+      if (title) {
+        meta.title = title;
+        metaUpdates.title = title;
+      }
+    }
+    await this.store.updateMeta(meta.id, metaUpdates);
 
     let normalCompletion = false;
 
