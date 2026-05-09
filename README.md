@@ -205,6 +205,10 @@ Sessions are stored as directories under `~/.local/share/roundtable/sessions/`:
 - Session data is written only to Roundtable's own data directory
 - No OS-level sandboxing in v1 (planned for later)
 
+## Streaming Behavior
+
+Claude responses stream incrementally in real mode. Codex currently renders after completion because `codex exec --json` emits completed message events rather than text deltas. Steward remains buffered because it returns structured JSON decisions.
+
 ## v1 Non-Goals
 
 - No file writes to target projects
