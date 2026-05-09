@@ -2,6 +2,8 @@
 
 Local-first persistent group chat where Claude and Codex deliberate over a project folder.
 
+> **Note:** This is an independent, open-source, local-first developer tool. It is not affiliated with [roundtable.now](https://roundtable.now) or any other similarly named AI council/debate products. This project focuses on CLI-driven, artifact-backed deliberation over local codebases — not hosted multi-model brainstorming SaaS. A rename may be forthcoming before public release.
+
 ## What It Does
 
 You point Roundtable at a folder and ask a question. Claude and Codex respond to you and each other. A moderator called the Steward summarizes when the room reaches consensus or a useful decision point.
