@@ -274,8 +274,16 @@ The rename is mechanical but wide — every package, every test string literal, 
 
 ---
 
-## Decision needed
+## Decision (2026-05-08)
 
-1. **Which name?** Pick from the top 3 (Wardroom, Convoke, Tablekeep) or propose another.
-2. **Rename now or defer?** If deferring, the README disclaimer is sufficient until public release.
-3. **Backward compat shims?** Worth building now, or skip since there are no external users yet?
+**Chosen name: Wardroom**
+
+**Rename timing: Deferred.** The rename will happen as a dedicated milestone after current stabilization work is complete (context-pack selection fixes, artifact persistence, workspace dependency cycle cleanup, streaming output). The repo remains `roundtable` until then.
+
+**Backward compatibility: Minimal.** No real external users exist yet, so heavy compat shims are unnecessary. Consider a temporary `roundtable` CLI alias for one release only if trivial. Historical tags/releases remain under the Roundtable codename. Public docs should eventually note: "Roundtable was the original codename; the project is now Wardroom."
+
+**Current state:**
+
+- README disclaimer is committed (notes independence from roundtable.now)
+- Repo stays as `roundtable` until the rename milestone
+- No code changes until rename is explicitly triggered
