@@ -159,177 +159,240 @@ export class RoundtableEngine {
       updatedAt: new Date().toISOString(),
     });
 
-    // Load context pack
-    const contextPack = await this.store.loadContextPack(meta.id, meta.currentContextPackId);
+    let normalCompletion = false;
 
-    // Build prior transcript from existing session events
-    const priorTranscript = buildTranscript(
-      session.events,
-      this.config.deliberation.maxTranscriptBytes,
-    );
+    try {
+      // Load context pack
+      const contextPack = await this.store.loadContextPack(meta.id, meta.currentContextPackId);
 
-    // Run deliberation
-    const deliberation = runDeliberation({
-      sessionId: meta.id,
-      userMessage: message,
-      contextPack,
-      priorTranscript,
-      adapters: this.adapters,
-      limits: this.config.deliberation,
-      systemPrompts: this.systemPrompts,
-      signal,
-    });
+      // Build prior transcript from existing session events
+      const priorTranscript = buildTranscript(
+        session.events,
+        this.config.deliberation.maxTranscriptBytes,
+      );
 
-    // Track pending invocations for artifact persistence
-    type PendingInvocation = {
-      participant: string;
-      artifactMeta: Record<string, unknown>;
-    };
-    const pending = new Map<string, PendingInvocation>();
+      // Run deliberation
+      const deliberation = runDeliberation({
+        sessionId: meta.id,
+        userMessage: message,
+        contextPack,
+        priorTranscript,
+        adapters: this.adapters,
+        limits: this.config.deliberation,
+        systemPrompts: this.systemPrompts,
+        signal,
+      });
 
-    for await (const event of deliberation) {
-      // Persist every event
-      await this.store.appendEvent(meta.id, event);
-      session.events.push(event);
+      // Track pending invocations for artifact persistence
+      type PendingInvocation = {
+        participant: string;
+        artifactMeta: Record<string, unknown>;
+      };
+      const pending = new Map<string, PendingInvocation>();
 
-      // --- Artifact accumulation & persistence ---
-      const invocationId = event.data.invocationId as string | undefined;
+      for await (const event of deliberation) {
+        // Persist every event
+        await this.store.appendEvent(meta.id, event);
+        session.events.push(event);
 
-      if (invocationId && event.type === "agent_invocation_started") {
-        pending.set(invocationId, {
-          participant: event.participant ?? "unknown",
-          artifactMeta: {
-            invocationId,
-            command: event.data.command,
-            pid: event.data.pid,
-            startedAt: event.data.timestamp,
-          },
-        });
-      }
+        // --- Artifact accumulation & persistence (best-effort) ---
+        const invocationId = event.data.invocationId as string | undefined;
 
-      if (invocationId && event.type === "agent_invocation_metadata") {
-        const p = pending.get(invocationId);
-        if (p) {
-          Object.assign(p.artifactMeta, {
-            cwd: event.data.cwd,
-            args: event.data.args,
-            envKeys: event.data.envKeys,
+        if (invocationId && event.type === "agent_invocation_started") {
+          pending.set(invocationId, {
+            participant: event.participant ?? "unknown",
+            artifactMeta: {
+              invocationId,
+              command: event.data.command,
+              pid: event.data.pid,
+              startedAt: event.data.timestamp,
+            },
           });
         }
-      }
 
-      if (invocationId && event.type === "agent_response_end") {
-        const p = pending.get(invocationId);
-        if (p) {
+        if (invocationId && event.type === "agent_invocation_metadata") {
+          const p = pending.get(invocationId);
+          if (p) {
+            Object.assign(p.artifactMeta, {
+              cwd: event.data.cwd,
+              args: event.data.args,
+              envKeys: event.data.envKeys,
+            });
+          }
+        }
+
+        if (invocationId && event.type === "agent_response_end") {
+          const p = pending.get(invocationId);
+          if (p) {
+            Object.assign(p.artifactMeta, {
+              exitCode: event.data.exitCode,
+              durationMs: event.data.durationMs,
+            });
+            try {
+              await this.store.saveArtifact(
+                meta.id,
+                p.participant,
+                invocationId,
+                "meta.json",
+                JSON.stringify(p.artifactMeta, null, 2),
+              );
+              await this.store.saveArtifact(
+                meta.id,
+                p.participant,
+                invocationId,
+                "stdout.log",
+                (event.data.content as string) ?? "",
+              );
+              if (event.data.stderr) {
+                await this.store.saveArtifact(
+                  meta.id,
+                  p.participant,
+                  invocationId,
+                  "stderr.log",
+                  event.data.stderr as string,
+                );
+              }
+            } catch {
+              // Artifact persistence is best-effort; deliberation continues
+            }
+            pending.delete(invocationId);
+          }
+        }
+
+        if (invocationId && event.type === "agent_error") {
+          let p = pending.get(invocationId);
+          if (!p) {
+            // Adapter threw before yielding invocation_started
+            const src = (event.data.sourceParticipant as string) ?? "unknown";
+            p = { participant: src, artifactMeta: { invocationId } };
+          }
           Object.assign(p.artifactMeta, {
             exitCode: event.data.exitCode,
-            durationMs: event.data.durationMs,
+            error: event.data.error,
           });
-          await this.store.saveArtifact(
-            meta.id,
-            p.participant,
-            invocationId,
-            "meta.json",
-            JSON.stringify(p.artifactMeta, null, 2),
-          );
-          await this.store.saveArtifact(
-            meta.id,
-            p.participant,
-            invocationId,
-            "stdout.log",
-            (event.data.content as string) ?? "",
-          );
-          if (event.data.stderr) {
+          try {
             await this.store.saveArtifact(
               meta.id,
               p.participant,
               invocationId,
-              "stderr.log",
-              event.data.stderr as string,
+              "meta.json",
+              JSON.stringify(p.artifactMeta, null, 2),
             );
+            if (event.data.stdout) {
+              await this.store.saveArtifact(
+                meta.id,
+                p.participant,
+                invocationId,
+                "stdout.log",
+                event.data.stdout as string,
+              );
+            }
+            if (event.data.stderr) {
+              await this.store.saveArtifact(
+                meta.id,
+                p.participant,
+                invocationId,
+                "stderr.log",
+                event.data.stderr as string,
+              );
+            }
+          } catch {
+            // Artifact persistence is best-effort; deliberation continues
           }
           pending.delete(invocationId);
         }
+
+        if (invocationId && event.type === "agent_invocation_timeout") {
+          const p = pending.get(invocationId);
+          if (p) {
+            Object.assign(p.artifactMeta, {
+              timeout: true,
+              durationMs: event.data.durationMs,
+            });
+            try {
+              await this.store.saveArtifact(
+                meta.id,
+                p.participant,
+                invocationId,
+                "meta.json",
+                JSON.stringify(p.artifactMeta, null, 2),
+              );
+            } catch {
+              // Artifact persistence is best-effort; deliberation continues
+            }
+            pending.delete(invocationId);
+          }
+        }
+
+        // If steward_decision, update meta with latest summary (best-effort)
+        if (event.type === "steward_decision") {
+          const summary = event.data.summary as string | undefined;
+          if (summary) {
+            meta.latestStewardSummary = summary;
+            try {
+              await this.store.updateMeta(meta.id, {
+                latestStewardSummary: summary,
+                updatedAt: new Date().toISOString(),
+              });
+            } catch {
+              // Steward summary persistence is best-effort; deliberation continues
+            }
+          }
+        }
+
+        yield event;
       }
 
-      if (invocationId && event.type === "agent_error") {
-        let p = pending.get(invocationId);
-        if (!p) {
-          // Adapter threw before yielding invocation_started
-          const src = (event.data.sourceParticipant as string) ?? "unknown";
-          p = { participant: src, artifactMeta: { invocationId } };
-        }
-        Object.assign(p.artifactMeta, {
-          exitCode: event.data.exitCode,
-          error: event.data.error,
-        });
-        await this.store.saveArtifact(
+      // After deliberation, set status back to awaiting_user
+      await this.store.updateMeta(meta.id, {
+        status: "awaiting_user",
+        updatedAt: new Date().toISOString(),
+      });
+      meta.status = "awaiting_user";
+      normalCompletion = true;
+    } catch (err) {
+      // Persist error event (best-effort) before re-throwing
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      try {
+        const errorEvent = makeSessionEvent(
+          "deliberation_interrupted",
           meta.id,
-          p.participant,
-          invocationId,
-          "meta.json",
-          JSON.stringify(p.artifactMeta, null, 2),
+          {
+            reason: "engine_error",
+            error: errorMessage,
+          },
+          { participant: "roundtable" },
         );
-        if (event.data.stdout) {
-          await this.store.saveArtifact(
-            meta.id,
-            p.participant,
-            invocationId,
-            "stdout.log",
-            event.data.stdout as string,
-          );
-        }
-        if (event.data.stderr) {
-          await this.store.saveArtifact(
-            meta.id,
-            p.participant,
-            invocationId,
-            "stderr.log",
-            event.data.stderr as string,
-          );
-        }
-        pending.delete(invocationId);
+        await this.store.appendEvent(meta.id, errorEvent);
+        session.events.push(errorEvent);
+      } catch {
+        // Event persistence also failed; continue to cleanup
       }
-
-      if (invocationId && event.type === "agent_invocation_timeout") {
-        const p = pending.get(invocationId);
-        if (p) {
-          Object.assign(p.artifactMeta, {
-            timeout: true,
-            durationMs: event.data.durationMs,
-          });
-          await this.store.saveArtifact(
-            meta.id,
-            p.participant,
-            invocationId,
-            "meta.json",
-            JSON.stringify(p.artifactMeta, null, 2),
-          );
-          pending.delete(invocationId);
-        }
-      }
-
-      // If steward_decision, update meta with latest summary
-      if (event.type === "steward_decision") {
-        const summary = event.data.summary as string | undefined;
-        if (summary) {
-          meta.latestStewardSummary = summary;
+      throw err;
+    } finally {
+      // Guarantee session is never left stuck in "deliberating"
+      if (!normalCompletion && meta.status === "deliberating") {
+        try {
           await this.store.updateMeta(meta.id, {
-            latestStewardSummary: summary,
+            status: "awaiting_user",
             updatedAt: new Date().toISOString(),
           });
+          meta.status = "awaiting_user";
+        } catch {
+          // Status update failed; mark as error
+          try {
+            await this.store.updateMeta(meta.id, {
+              status: "error",
+              updatedAt: new Date().toISOString(),
+            });
+            meta.status = "error";
+          } catch {
+            // Persistence is completely down; in-memory state is best-effort
+            meta.status = "error";
+          }
         }
       }
-
-      yield event;
     }
-
-    // After deliberation, set status back to awaiting_user
-    meta.status = "awaiting_user";
-    await this.store.updateMeta(meta.id, {
-      status: "awaiting_user",
-      updatedAt: new Date().toISOString(),
-    });
   }
 
   async refreshContext(session: Session, contextPack: ContextPack): Promise<ContextPack> {

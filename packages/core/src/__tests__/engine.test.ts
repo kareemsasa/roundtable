@@ -330,4 +330,166 @@ describe("RoundtableEngine", () => {
       }
     });
   });
+
+  describe("session cleanup on failure", () => {
+    it("returns to awaiting_user when adapter throws mid-invocation", async () => {
+      const throwingAdapter = new TestAdapter({ id: "claude", response: "ok" });
+      // eslint-disable-next-line require-yield
+      throwingAdapter.invoke = async function* () {
+        throw new Error("Adapter crashed unexpectedly");
+      };
+
+      const errorEngine = new RoundtableEngine({
+        store,
+        adapters: {
+          claude: throwingAdapter,
+          codex: new TestAdapter({ id: "codex", response: "Codex works" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
+        },
+        config: makeConfig(),
+      });
+
+      const cp = mockContextPack();
+      const session = await errorEngine.startSession("/tmp/test-project", cp);
+      await drain(errorEngine.submitMessage(session, "test"));
+
+      // invokeAdapter catches the throw and converts to agent_error;
+      // the turn-loop handles single failures gracefully
+      const meta = await store.loadSession(session.meta.id);
+      expect(meta.status).toBe("awaiting_user");
+    });
+
+    it("returns to awaiting_user on abort", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const cp = mockContextPack();
+      const session = await engine.startSession("/tmp/test-project", cp);
+      await drain(engine.submitMessage(session, "test", controller.signal));
+
+      const meta = await store.loadSession(session.meta.id);
+      expect(meta.status).toBe("awaiting_user");
+
+      // Should have a deliberation_interrupted event
+      const stored = await store.loadEvents(session.meta.id);
+      expect(stored.some((e) => e.type === "deliberation_interrupted")).toBe(true);
+    });
+
+    it("continues deliberation when saveArtifact throws", async () => {
+      const failStore = new FailingSessionStore();
+      failStore.failSaveArtifact = true;
+
+      const artifactEngine = new RoundtableEngine({
+        store: failStore,
+        adapters: makeMockAdapters(),
+        config: makeConfig(),
+      });
+
+      const cp = mockContextPack();
+      const session = await artifactEngine.startSession("/tmp/test-project", cp);
+
+      // Should NOT throw — artifacts are best-effort
+      await drain(artifactEngine.submitMessage(session, "test"));
+
+      const meta = await failStore.loadSession(session.meta.id);
+      expect(meta.status).toBe("awaiting_user");
+
+      // Deliberation should have completed normally
+      const events = await failStore.loadEvents(session.meta.id);
+      const ended = events.filter((e) => e.type === "deliberation_ended");
+      expect(ended).toHaveLength(1);
+      expect(ended[0].data.reason).toBe("concluded");
+    });
+
+    it("resets status when appendEvent throws mid-deliberation", async () => {
+      const failStore = new FailingSessionStore();
+      // Fail when the first agent_invocation_started event is appended
+      failStore.failAppendOnType = "agent_invocation_started";
+
+      const appendEngine = new RoundtableEngine({
+        store: failStore,
+        adapters: makeMockAdapters(),
+        config: makeConfig(),
+      });
+
+      const cp = mockContextPack();
+      const session = await appendEngine.startSession("/tmp/test-project", cp);
+
+      await expect(drain(appendEngine.submitMessage(session, "test"))).rejects.toThrow(
+        "Simulated appendEvent failure",
+      );
+
+      // Session must NOT be stuck in "deliberating"
+      const meta = await failStore.loadSession(session.meta.id);
+      expect(meta.status).toBe("awaiting_user");
+
+      // Events written before the failure should be preserved
+      const events = await failStore.loadEvents(session.meta.id);
+      expect(events.some((e) => e.type === "user_message")).toBe(true);
+      expect(events.some((e) => e.type === "deliberation_started")).toBe(true);
+    });
+
+    it("preserves events for transcript generation after mid-deliberation failure", async () => {
+      // Markdown export (generateTranscriptMarkdown) reads from persisted events.
+      // Verify that events written before a failure are intact and usable.
+      const failStore = new FailingSessionStore();
+      failStore.failAppendOnType = "agent_response_end";
+
+      const mdEngine = new RoundtableEngine({
+        store: failStore,
+        adapters: makeMockAdapters(),
+        config: makeConfig(),
+      });
+
+      const cp = mockContextPack();
+      const session = await mdEngine.startSession("/tmp/test-project", cp);
+
+      try {
+        await drain(mdEngine.submitMessage(session, "Review code"));
+      } catch {
+        // expected
+      }
+
+      const meta = await failStore.loadSession(session.meta.id);
+      expect(meta.status).toBe("awaiting_user");
+
+      // Events before the failure are in the store
+      const events = await failStore.loadEvents(session.meta.id);
+      const userMsg = events.find((e) => e.type === "user_message");
+      expect(userMsg).toBeDefined();
+      expect(userMsg!.data.content).toBe("Review code");
+
+      // Invocation lifecycle events written before response_end are preserved
+      expect(events.some((e) => e.type === "agent_invocation_started")).toBe(true);
+    });
+  });
 });
+
+/**
+ * InMemorySessionStore subclass that can simulate failures
+ * on specific operations for testing cleanup paths.
+ */
+class FailingSessionStore extends InMemorySessionStore {
+  failAppendOnType?: string;
+  failSaveArtifact = false;
+
+  async appendEvent(sessionId: string, event: SessionEvent): Promise<void> {
+    if (this.failAppendOnType === event.type) {
+      throw new Error(`Simulated appendEvent failure on ${event.type}`);
+    }
+    return super.appendEvent(sessionId, event);
+  }
+
+  async saveArtifact(
+    sessionId: string,
+    participant: string,
+    invocationId: string,
+    filename: string,
+    content: string,
+  ): Promise<void> {
+    if (this.failSaveArtifact) {
+      throw new Error("Simulated saveArtifact failure");
+    }
+    return super.saveArtifact(sessionId, participant, invocationId, filename, content);
+  }
+}
