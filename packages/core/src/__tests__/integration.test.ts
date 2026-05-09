@@ -1,21 +1,15 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { RoundtableEngine } from "../engine.js";
-import { MockAdapter } from "@roundtable/adapters";
-import { FileSessionStore } from "@roundtable/persistence";
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { TestAdapter } from "./test-adapter.js";
+import { InMemorySessionStore } from "./in-memory-session-store.js";
 import { randomUUID } from "node:crypto";
 import type { RoundtableConfig, ContextPack, SessionEvent, AgentAdapter } from "../types.js";
 
 // === Helpers ===
 
-function makeConfig(
-  dataDir: string,
-  overrides: Partial<RoundtableConfig["deliberation"]> = {},
-): RoundtableConfig {
+function makeConfig(overrides: Partial<RoundtableConfig["deliberation"]> = {}): RoundtableConfig {
   return {
-    dataDir,
+    dataDir: "/tmp/roundtable-integ",
     context: { budgetBytes: 100_000, maxFiles: 50, maxFileBytes: 10_000, maxTreeDepth: 5 },
     deliberation: {
       maxRounds: 2,
@@ -98,7 +92,7 @@ function eventsOfType(events: SessionEvent[], type: string): SessionEvent[] {
  */
 function makeStewardSequence(decisions: string[]): AgentAdapter {
   let callCount = 0;
-  const base = new MockAdapter({ id: "steward", response: decisions[0] });
+  const base = new TestAdapter({ id: "steward", response: decisions[0] });
   const originalInvoke = base.invoke.bind(base);
 
   base.invoke = async function* (input, signal) {
@@ -118,27 +112,24 @@ function makeStewardSequence(decisions: string[]): AgentAdapter {
 
 // === Test Suite ===
 
-describe("Integration: full product loop with mock adapters", () => {
-  let dataDir: string;
-  let store: FileSessionStore;
+describe("Integration: full product loop with test adapters", () => {
+  let store: InMemorySessionStore;
 
-  beforeEach(async () => {
-    dataDir = join(tmpdir(), `roundtable-integ-${randomUUID()}`);
-    await mkdir(dataDir, { recursive: true });
-    store = new FileSessionStore(dataDir);
+  beforeEach(() => {
+    store = new InMemorySessionStore();
   });
 
   // ---------------------------------------------------------------
   // 1. Happy path: one-round deliberation
   // ---------------------------------------------------------------
   it("happy path: one-round deliberation with correct event sequence and meta updates", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", response: "Claude's analysis of the codebase." }),
-        codex: new MockAdapter({ id: "codex", response: "Codex's implementation suggestion." }),
-        steward: new MockAdapter({
+        claude: new TestAdapter({ id: "claude", response: "Claude's analysis of the codebase." }),
+        codex: new TestAdapter({ id: "codex", response: "Codex's implementation suggestion." }),
+        steward: new TestAdapter({
           id: "steward",
           response: stewardDecision("concluded", "The team reached consensus."),
         }),
@@ -197,12 +188,12 @@ describe("Integration: full product loop with mock adapters", () => {
   // 2. Steward requests continue -> second round
   // ---------------------------------------------------------------
   it("steward requests continue then concludes on second round", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", response: "Claude's analysis." }),
-        codex: new MockAdapter({ id: "codex", response: "Codex's analysis." }),
+        claude: new TestAdapter({ id: "claude", response: "Claude's analysis." }),
+        codex: new TestAdapter({ id: "codex", response: "Codex's analysis." }),
         steward: makeStewardSequence([
           stewardDecision("continue", "Need more discussion"),
           stewardDecision("concluded", "Consensus reached"),
@@ -238,13 +229,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 3. Max rounds override
   // ---------------------------------------------------------------
   it("maxRounds=1 stops deliberation even when steward says continue", async () => {
-    const config = makeConfig(dataDir, { maxRounds: 1 });
+    const config = makeConfig({ maxRounds: 1 });
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", response: "Claude response." }),
-        codex: new MockAdapter({ id: "codex", response: "Codex response." }),
-        steward: new MockAdapter({
+        claude: new TestAdapter({ id: "claude", response: "Claude response." }),
+        codex: new TestAdapter({ id: "codex", response: "Codex response." }),
+        steward: new TestAdapter({
           id: "steward",
           response: stewardDecision("continue", "Keep going"),
         }),
@@ -276,13 +267,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 4. needs_user
   // ---------------------------------------------------------------
   it("steward returns needs_user and deliberation ends with session awaiting_user", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", response: "Claude needs clarification." }),
-        codex: new MockAdapter({ id: "codex", response: "Codex needs clarification." }),
-        steward: new MockAdapter({
+        claude: new TestAdapter({ id: "claude", response: "Claude needs clarification." }),
+        codex: new TestAdapter({ id: "codex", response: "Codex needs clarification." }),
+        steward: new TestAdapter({
           id: "steward",
           response: stewardDecision("needs_user", "User needs to clarify requirements"),
         }),
@@ -314,13 +305,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 5. Single participant failure (claude fails)
   // ---------------------------------------------------------------
   it("single participant failure: claude errors but codex and steward still work", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", error: "Claude process crashed unexpectedly" }),
-        codex: new MockAdapter({ id: "codex", response: "Codex's solid implementation." }),
-        steward: new MockAdapter({
+        claude: new TestAdapter({ id: "claude", error: "Claude process crashed unexpectedly" }),
+        codex: new TestAdapter({ id: "codex", response: "Codex's solid implementation." }),
+        steward: new TestAdapter({
           id: "steward",
           response: stewardDecision("concluded", "Codex provided adequate solution."),
         }),
@@ -363,13 +354,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 6. Double participant failure (both fail)
   // ---------------------------------------------------------------
   it("double participant failure: both claude and codex error, steward not invoked", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", error: "Claude crashed" }),
-        codex: new MockAdapter({ id: "codex", error: "Codex crashed" }),
-        steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+        claude: new TestAdapter({ id: "claude", error: "Claude crashed" }),
+        codex: new TestAdapter({ id: "codex", error: "Codex crashed" }),
+        steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
       },
       config,
     });
@@ -405,13 +396,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 7. Steward invalid JSON output
   // ---------------------------------------------------------------
   it("steward returns invalid JSON: parse error emitted and deliberation ends safely", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", response: "Claude's thoughts." }),
-        codex: new MockAdapter({ id: "codex", response: "Codex's thoughts." }),
-        steward: new MockAdapter({
+        claude: new TestAdapter({ id: "claude", response: "Claude's thoughts." }),
+        codex: new TestAdapter({ id: "codex", response: "Codex's thoughts." }),
+        steward: new TestAdapter({
           id: "steward",
           response: "I think we should continue working on this.",
         }),
@@ -446,13 +437,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 8. Session survives errors and remains usable
   // ---------------------------------------------------------------
   it("session survives errors: second deliberation works after first has an error", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
 
     // First deliberation: Claude errors
     const errorAdapters = {
-      claude: new MockAdapter({ id: "claude", error: "Claude failed" }),
-      codex: new MockAdapter({ id: "codex", response: "Codex works in round 1." }),
-      steward: new MockAdapter({
+      claude: new TestAdapter({ id: "claude", error: "Claude failed" }),
+      codex: new TestAdapter({ id: "codex", response: "Codex works in round 1." }),
+      steward: new TestAdapter({
         id: "steward",
         response: stewardDecision("concluded", "Partial results."),
       }),
@@ -476,9 +467,9 @@ describe("Integration: full product loop with mock adapters", () => {
 
     // Second deliberation: everything works
     const successAdapters = {
-      claude: new MockAdapter({ id: "claude", response: "Claude works now." }),
-      codex: new MockAdapter({ id: "codex", response: "Codex works in round 2." }),
-      steward: new MockAdapter({
+      claude: new TestAdapter({ id: "claude", response: "Claude works now." }),
+      codex: new TestAdapter({ id: "codex", response: "Codex works in round 2." }),
+      steward: new TestAdapter({
         id: "steward",
         response: stewardDecision("concluded", "Full consensus."),
       }),
@@ -519,13 +510,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 9. Event log correctness after replay
   // ---------------------------------------------------------------
   it("event log correctness: resumed session matches original events", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", response: "Claude's replay-test response." }),
-        codex: new MockAdapter({ id: "codex", response: "Codex's replay-test response." }),
-        steward: new MockAdapter({
+        claude: new TestAdapter({ id: "claude", response: "Claude's replay-test response." }),
+        codex: new TestAdapter({ id: "codex", response: "Codex's replay-test response." }),
+        steward: new TestAdapter({
           id: "steward",
           response: stewardDecision("concluded", "Replay summary."),
         }),
@@ -576,13 +567,13 @@ describe("Integration: full product loop with mock adapters", () => {
   // 10. refreshContext updates context pack between deliberations
   // ---------------------------------------------------------------
   it("refreshContext updates context pack id and emits event between deliberations", async () => {
-    const config = makeConfig(dataDir);
+    const config = makeConfig();
     const engine = new RoundtableEngine({
       store,
       adapters: {
-        claude: new MockAdapter({ id: "claude", response: "Claude response." }),
-        codex: new MockAdapter({ id: "codex", response: "Codex response." }),
-        steward: new MockAdapter({
+        claude: new TestAdapter({ id: "claude", response: "Claude response." }),
+        codex: new TestAdapter({ id: "codex", response: "Codex response." }),
+        steward: new TestAdapter({
           id: "steward",
           response: stewardDecision("concluded", "Done."),
         }),

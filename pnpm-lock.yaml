@@ -105,13 +105,6 @@ importers:
       zod:
         specifier: ^3.24.0
         version: 3.25.76
-    devDependencies:
-      '@roundtable/adapters':
-        specifier: workspace:*
-        version: link:../adapters
-      '@roundtable/persistence':
-        specifier: workspace:*
-        version: link:../persistence
 
   packages/persistence:
     dependencies:

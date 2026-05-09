@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { MockAdapter } from "@roundtable/adapters";
+import { TestAdapter } from "./test-adapter.js";
 import { runDeliberation } from "../turn-loop.js";
 import type { DeliberationInput } from "../turn-loop.js";
 import type { ContextPack, SessionEvent } from "../types.js";
@@ -49,9 +49,9 @@ function makeInput(overrides: Partial<DeliberationInput> = {}): DeliberationInpu
     contextPack: makeContextPack(),
     priorTranscript: [],
     adapters: {
-      claude: new MockAdapter({ id: "claude", response: "I suggest refactoring the middleware." }),
-      codex: new MockAdapter({ id: "codex", response: "I would restructure the handlers." }),
-      steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+      claude: new TestAdapter({ id: "claude", response: "I suggest refactoring the middleware." }),
+      codex: new TestAdapter({ id: "codex", response: "I would restructure the handlers." }),
+      steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
     },
     limits: {
       maxRounds: 2,
@@ -131,7 +131,7 @@ describe("runDeliberation", () => {
 
   it("continue then conclude: steward says continue first time, concludes second", async () => {
     let stewardCallCount = 0;
-    const stewardAdapter = new MockAdapter({
+    const stewardAdapter = new TestAdapter({
       id: "steward",
       response: stewardDecision("continue"),
     });
@@ -164,8 +164,8 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", response: "Claude round response" }),
-          codex: new MockAdapter({ id: "codex", response: "Codex round response" }),
+          claude: new TestAdapter({ id: "claude", response: "Claude round response" }),
+          codex: new TestAdapter({ id: "codex", response: "Codex round response" }),
           steward: stewardAdapter,
         },
       }),
@@ -194,9 +194,9 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", response: "Claude says things" }),
-          codex: new MockAdapter({ id: "codex", response: "Codex says things" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("continue") }),
+          claude: new TestAdapter({ id: "claude", response: "Claude says things" }),
+          codex: new TestAdapter({ id: "codex", response: "Codex says things" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("continue") }),
         },
         limits: {
           maxRounds: 1,
@@ -223,9 +223,9 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", error: "Claude process crashed" }),
-          codex: new MockAdapter({ id: "codex", response: "Codex works fine" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+          claude: new TestAdapter({ id: "claude", error: "Claude process crashed" }),
+          codex: new TestAdapter({ id: "codex", response: "Codex works fine" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },
       }),
     );
@@ -255,9 +255,9 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", error: "Claude crashed" }),
-          codex: new MockAdapter({ id: "codex", error: "Codex crashed" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+          claude: new TestAdapter({ id: "claude", error: "Claude crashed" }),
+          codex: new TestAdapter({ id: "codex", error: "Codex crashed" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },
       }),
     );
@@ -286,9 +286,9 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", response: "Claude response" }),
-          codex: new MockAdapter({ id: "codex", response: "Codex response" }),
-          steward: new MockAdapter({ id: "steward", response: "This is not valid JSON at all" }),
+          claude: new TestAdapter({ id: "claude", response: "Claude response" }),
+          codex: new TestAdapter({ id: "codex", response: "Codex response" }),
+          steward: new TestAdapter({ id: "steward", response: "This is not valid JSON at all" }),
         },
       }),
     );
@@ -308,9 +308,9 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", response: "Claude response" }),
-          codex: new MockAdapter({ id: "codex", response: "Codex response" }),
-          steward: new MockAdapter({
+          claude: new TestAdapter({ id: "claude", response: "Claude response" }),
+          codex: new TestAdapter({ id: "codex", response: "Codex response" }),
+          steward: new TestAdapter({
             id: "steward",
             response: stewardDecision("needs_user", "Need clarification from user"),
           }),
@@ -333,13 +333,13 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({
+          claude: new TestAdapter({
             id: "claude",
             response: "word1 word2 word3",
             streamChunks: true,
           }),
-          codex: new MockAdapter({ id: "codex", response: "Codex response" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+          codex: new TestAdapter({ id: "codex", response: "Codex response" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },
       }),
     );
@@ -350,7 +350,7 @@ describe("runDeliberation", () => {
   });
 
   it("handles adapter that throws an exception", async () => {
-    const throwingAdapter = new MockAdapter({ id: "claude", response: "ok" });
+    const throwingAdapter = new TestAdapter({ id: "claude", response: "ok" });
     // eslint-disable-next-line require-yield
     throwingAdapter.invoke = async function* () {
       throw new Error("Unexpected adapter crash");
@@ -360,8 +360,8 @@ describe("runDeliberation", () => {
       makeInput({
         adapters: {
           claude: throwingAdapter,
-          codex: new MockAdapter({ id: "codex", response: "Codex works" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+          codex: new TestAdapter({ id: "codex", response: "Codex works" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },
       }),
     );
@@ -386,9 +386,9 @@ describe("runDeliberation", () => {
     const events = await collectEvents(
       makeInput({
         adapters: {
-          claude: new MockAdapter({ id: "claude", timeout: true }),
-          codex: new MockAdapter({ id: "codex", response: "Codex works" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+          claude: new TestAdapter({ id: "claude", timeout: true }),
+          codex: new TestAdapter({ id: "codex", response: "Codex works" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },
       }),
     );

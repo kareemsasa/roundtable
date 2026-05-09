@@ -1,16 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { RoundtableEngine } from "../engine.js";
-import { MockAdapter } from "@roundtable/adapters";
-import { FileSessionStore } from "@roundtable/persistence";
-import { mkdir, readFile, readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { TestAdapter } from "./test-adapter.js";
+import { InMemorySessionStore } from "./in-memory-session-store.js";
 import { randomUUID } from "node:crypto";
 import type { RoundtableConfig, ContextPack, SessionEvent } from "../types.js";
 
-function makeConfig(dataDir: string): RoundtableConfig {
+function makeConfig(): RoundtableConfig {
   return {
-    dataDir,
+    dataDir: "/tmp/roundtable-test",
     context: { budgetBytes: 100_000, maxFiles: 50, maxFileBytes: 10_000, maxTreeDepth: 5 },
     deliberation: { maxRounds: 2, participantTimeoutMs: 120_000, deliberationTimeoutMs: 600_000 },
     adapters: {
@@ -79,25 +76,22 @@ async function drain(gen: AsyncGenerator<SessionEvent>): Promise<void> {
 
 function makeMockAdapters() {
   return {
-    claude: new MockAdapter({ id: "claude", response: "Claude's thoughtful analysis." }),
-    codex: new MockAdapter({ id: "codex", response: "Codex's code suggestion." }),
-    steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+    claude: new TestAdapter({ id: "claude", response: "Claude's thoughtful analysis." }),
+    codex: new TestAdapter({ id: "codex", response: "Codex's code suggestion." }),
+    steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
   };
 }
 
 describe("RoundtableEngine", () => {
-  let dataDir: string;
-  let store: FileSessionStore;
+  let store: InMemorySessionStore;
   let engine: RoundtableEngine;
 
-  beforeEach(async () => {
-    dataDir = join(tmpdir(), `roundtable-test-${randomUUID()}`);
-    await mkdir(dataDir, { recursive: true });
-    store = new FileSessionStore(dataDir);
+  beforeEach(() => {
+    store = new InMemorySessionStore();
     engine = new RoundtableEngine({
       store,
       adapters: makeMockAdapters(),
-      config: makeConfig(dataDir),
+      config: makeConfig(),
     });
   });
 
@@ -229,41 +223,40 @@ describe("RoundtableEngine", () => {
       const responseEnds = events.filter((e) => e.type === "agent_response_end");
       expect(responseEnds.length).toBeGreaterThanOrEqual(3); // claude + codex + steward
 
-      const artifactsRoot = join(dataDir, "sessions", session.meta.id, "artifacts");
-
       // Check each participant has artifact files
       for (const participant of ["claude", "codex", "steward"]) {
-        const participantDir = join(artifactsRoot, participant);
-        const files = await readdir(participantDir);
+        const artifacts = store.listArtifacts(session.meta.id, participant);
 
-        // Should have at least meta.json and stdout.log
-        const metaFiles = files.filter((f) => f.endsWith(".meta.json"));
-        const stdoutFiles = files.filter((f) => f.endsWith(".stdout.log"));
+        const metaFiles = artifacts.filter((a) => a.endsWith("meta.json"));
+        const stdoutFiles = artifacts.filter((a) => a.endsWith("stdout.log"));
         expect(metaFiles.length).toBeGreaterThanOrEqual(1);
         expect(stdoutFiles.length).toBeGreaterThanOrEqual(1);
 
         // Verify meta.json content
-        const metaContent = JSON.parse(await readFile(join(participantDir, metaFiles[0]), "utf-8"));
+        const invocationId = metaFiles[0].split("/")[0];
+        const metaContent = JSON.parse(
+          store.getArtifact(session.meta.id, participant, invocationId, "meta.json")!,
+        );
         expect(metaContent.invocationId).toBeDefined();
         expect(metaContent.command).toBeDefined();
         expect(metaContent.exitCode).toBe(0);
         expect(metaContent.durationMs).toBeDefined();
 
         // Verify stdout.log content
-        const stdout = await readFile(join(participantDir, stdoutFiles[0]), "utf-8");
+        const stdout = store.getArtifact(session.meta.id, participant, invocationId, "stdout.log")!;
         expect(stdout.length).toBeGreaterThan(0);
       }
     });
 
-    it("saves stderr.log and meta.json for error invocations", async () => {
+    it("saves meta.json with error for error invocations", async () => {
       const errorEngine = new RoundtableEngine({
         store,
         adapters: {
-          claude: new MockAdapter({ id: "claude", error: "Claude process crashed" }),
-          codex: new MockAdapter({ id: "codex", response: "Codex works fine" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+          claude: new TestAdapter({ id: "claude", error: "Claude process crashed" }),
+          codex: new TestAdapter({ id: "codex", response: "Codex works fine" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },
-        config: makeConfig(dataDir),
+        config: makeConfig(),
       });
 
       const cp = mockContextPack();
@@ -274,32 +267,31 @@ describe("RoundtableEngine", () => {
         events.push(event);
       }
 
-      const artifactsRoot = join(dataDir, "sessions", session.meta.id, "artifacts");
-
       // Claude errored — should have meta.json with error
-      const claudeDir = join(artifactsRoot, "claude");
-      const claudeFiles = await readdir(claudeDir);
-      const claudeMetaFiles = claudeFiles.filter((f) => f.endsWith(".meta.json"));
+      const claudeArtifacts = store.listArtifacts(session.meta.id, "claude");
+      const claudeMetaFiles = claudeArtifacts.filter((a) => a.endsWith("meta.json"));
       expect(claudeMetaFiles.length).toBe(1);
 
-      const claudeMeta = JSON.parse(await readFile(join(claudeDir, claudeMetaFiles[0]), "utf-8"));
+      const invocationId = claudeMetaFiles[0].split("/")[0];
+      const claudeMeta = JSON.parse(
+        store.getArtifact(session.meta.id, "claude", invocationId, "meta.json")!,
+      );
       expect(claudeMeta.error).toContain("Claude process crashed");
 
       // Codex succeeded — should have stdout.log
-      const codexDir = join(artifactsRoot, "codex");
-      const codexFiles = await readdir(codexDir);
-      expect(codexFiles.filter((f) => f.endsWith(".stdout.log")).length).toBe(1);
+      const codexArtifacts = store.listArtifacts(session.meta.id, "codex");
+      expect(codexArtifacts.filter((a) => a.endsWith("stdout.log")).length).toBe(1);
     });
 
     it("saves meta.json for timeout invocations", async () => {
       const timeoutEngine = new RoundtableEngine({
         store,
         adapters: {
-          claude: new MockAdapter({ id: "claude", timeout: true }),
-          codex: new MockAdapter({ id: "codex", response: "Codex works" }),
-          steward: new MockAdapter({ id: "steward", response: stewardDecision("concluded") }),
+          claude: new TestAdapter({ id: "claude", timeout: true }),
+          codex: new TestAdapter({ id: "codex", response: "Codex works" }),
+          steward: new TestAdapter({ id: "steward", response: stewardDecision("concluded") }),
         },
-        config: makeConfig(dataDir),
+        config: makeConfig(),
       });
 
       const cp = mockContextPack();
@@ -307,12 +299,14 @@ describe("RoundtableEngine", () => {
 
       await drain(timeoutEngine.submitMessage(session, "Do something."));
 
-      const claudeDir = join(dataDir, "sessions", session.meta.id, "artifacts", "claude");
-      const claudeFiles = await readdir(claudeDir);
-      const metaFiles = claudeFiles.filter((f) => f.endsWith(".meta.json"));
+      const claudeArtifacts = store.listArtifacts(session.meta.id, "claude");
+      const metaFiles = claudeArtifacts.filter((a) => a.endsWith("meta.json"));
       expect(metaFiles.length).toBe(1);
 
-      const meta = JSON.parse(await readFile(join(claudeDir, metaFiles[0]), "utf-8"));
+      const invocationId = metaFiles[0].split("/")[0];
+      const meta = JSON.parse(
+        store.getArtifact(session.meta.id, "claude", invocationId, "meta.json")!,
+      );
       expect(meta.timeout).toBe(true);
       expect(meta.durationMs).toBeDefined();
     });

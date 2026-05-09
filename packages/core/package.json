@@ -16,9 +16,5 @@
   "dependencies": {
     "nanoid": "^5.0.0",
     "zod": "^3.24.0"
-  },
-  "devDependencies": {
-    "@roundtable/adapters": "workspace:*",
-    "@roundtable/persistence": "workspace:*"
   }
 }
