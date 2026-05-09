@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import type { AgentEvent } from "@roundtable/core";
+import type { AgentEvent } from "@wardroom/core";
 import { AsyncQueue } from "./async-queue.js";
 
 export type SpawnOptions = {

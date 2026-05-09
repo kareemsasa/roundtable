@@ -1,4 +1,4 @@
-import type { RoundtableConfig } from "@roundtable/core";
+import type { WardroomConfig } from "@wardroom/core";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -9,10 +9,10 @@ const DEFAULT_ADAPTER_LIMITS = {
 };
 
 export function getDefaultDataDir(): string {
-  return join(homedir(), ".local", "share", "roundtable");
+  return join(homedir(), ".local", "share", "wardroom");
 }
 
-export const DEFAULT_CONFIG: RoundtableConfig = {
+export const DEFAULT_CONFIG: WardroomConfig = {
   dataDir: getDefaultDataDir(),
   context: {
     budgetBytes: 140_000,

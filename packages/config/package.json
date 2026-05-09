@@ -1,5 +1,5 @@
 {
-  "name": "@roundtable/config",
+  "name": "@wardroom/config",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@roundtable/core": "workspace:*",
+    "@wardroom/core": "workspace:*",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
   }

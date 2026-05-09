@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { ContextPack } from "@roundtable/core";
+import type { ContextPack } from "@wardroom/core";
 import { renderContextPackMarkdown } from "../markdown-render.js";
 
 function makePack(overrides?: Partial<ContextPack>): ContextPack {

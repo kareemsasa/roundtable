@@ -1,5 +1,5 @@
 {
-  "name": "@roundtable/context",
+  "name": "@wardroom/context",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@roundtable/core": "workspace:*",
+    "@wardroom/core": "workspace:*",
     "minimatch": "^10.0.0"
   }
 }

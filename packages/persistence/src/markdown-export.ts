@@ -1,4 +1,4 @@
-import type { SessionEvent, StewardDecision } from "@roundtable/core";
+import type { SessionEvent, StewardDecision } from "@wardroom/core";
 
 const DISPLAY_EVENTS = new Set([
   "user_message",
@@ -12,7 +12,8 @@ const PARTICIPANT_LABELS: Record<string, string> = {
   claude: "Claude",
   codex: "Codex",
   steward: "Steward",
-  roundtable: "Roundtable",
+  wardroom: "Wardroom",
+  roundtable: "Wardroom", // legacy: pre-rename events
 };
 
 function extractContent(event: SessionEvent): string {
@@ -25,14 +26,7 @@ function extractContent(event: SessionEvent): string {
 }
 
 export function generateTranscriptMarkdown(events: SessionEvent[], sessionId: string): string {
-  const lines: string[] = [
-    `# Roundtable Transcript`,
-    "",
-    `Session: \`${sessionId}\``,
-    "",
-    "---",
-    "",
-  ];
+  const lines: string[] = [`# Wardroom Transcript`, "", `Session: \`${sessionId}\``, "", "---", ""];
   for (const event of events) {
     if (!DISPLAY_EVENTS.has(event.type) || !event.participant) continue;
     // Skip steward's raw agent_response_end; steward_decision carries the rendered output

@@ -1,20 +1,20 @@
 {
-  "name": "@roundtable/cli",
+  "name": "@wardroom/cli",
   "version": "0.0.1",
   "type": "module",
   "bin": {
-    "roundtable": "dist/index.js"
+    "wardroom": "dist/index.js"
   },
   "scripts": {
     "build": "tsc -b",
     "dev": "node --import tsx src/index.ts"
   },
   "dependencies": {
-    "@roundtable/core": "workspace:*",
-    "@roundtable/config": "workspace:*",
-    "@roundtable/persistence": "workspace:*",
-    "@roundtable/context": "workspace:*",
-    "@roundtable/adapters": "workspace:*",
+    "@wardroom/core": "workspace:*",
+    "@wardroom/config": "workspace:*",
+    "@wardroom/persistence": "workspace:*",
+    "@wardroom/context": "workspace:*",
+    "@wardroom/adapters": "workspace:*",
     "commander": "^13.0.0"
   },
   "devDependencies": {

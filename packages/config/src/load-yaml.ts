@@ -34,22 +34,22 @@ export async function loadYamlConfig(filePath: string): Promise<PartialConfig | 
  * Returns { globalConfig, projectConfig } ready for resolveConfig().
  *
  * Search order:
- * - Global: ~/.config/roundtable/config.yaml
- * - Project: roundtable.config.yaml or .roundtable/config.yaml in targetPath
+ * - Global: ~/.config/wardroom/config.yaml
+ * - Project: wardroom.config.yaml or .wardroom/config.yaml in targetPath
  */
 export async function loadConfigFiles(targetPath?: string): Promise<{
   globalConfig: PartialConfig;
   projectConfig: PartialConfig;
 }> {
   // Global config
-  const globalPath = join(homedir(), ".config", "roundtable", "config.yaml");
+  const globalPath = join(homedir(), ".config", "wardroom", "config.yaml");
   const globalConfig = (await loadYamlConfig(globalPath)) ?? {};
 
   // Project config — try two locations
   let projectConfig: PartialConfig = {};
   if (targetPath) {
-    const candidate1 = join(targetPath, "roundtable.config.yaml");
-    const candidate2 = join(targetPath, ".roundtable", "config.yaml");
+    const candidate1 = join(targetPath, "wardroom.config.yaml");
+    const candidate2 = join(targetPath, ".wardroom", "config.yaml");
 
     projectConfig = (await loadYamlConfig(candidate1)) ?? (await loadYamlConfig(candidate2)) ?? {};
   }

@@ -28,7 +28,7 @@ export const DeliberationLimitsSchema = z.object({
   maxTranscriptBytes: z.number().positive().optional(),
 });
 
-export const RoundtableConfigSchema = z.object({
+export const WardroomConfigSchema = z.object({
   dataDir: z.string(),
   context: ContextConfigSchema,
   deliberation: DeliberationLimitsSchema,
@@ -40,6 +40,6 @@ export const RoundtableConfigSchema = z.object({
 });
 
 /** Partial config shape used for YAML files and CLI overrides */
-export const PartialConfigSchema = RoundtableConfigSchema.deepPartial();
+export const PartialConfigSchema = WardroomConfigSchema.deepPartial();
 
 export type PartialConfig = z.infer<typeof PartialConfigSchema>;

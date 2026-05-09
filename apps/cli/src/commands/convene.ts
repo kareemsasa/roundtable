@@ -3,12 +3,12 @@ import { resolve } from "node:path";
 import { stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { resolveConfig, loadConfigFiles } from "@roundtable/config";
-import { FileSessionStore } from "@roundtable/persistence";
-import { buildContextPack } from "@roundtable/context";
-import { MockAdapter, ClaudeAdapter, CodexAdapter, StewardAdapter } from "@roundtable/adapters";
-import { RoundtableEngine } from "@roundtable/core";
-import type { AgentAdapter } from "@roundtable/core";
+import { resolveConfig, loadConfigFiles } from "@wardroom/config";
+import { FileSessionStore } from "@wardroom/persistence";
+import { buildContextPack } from "@wardroom/context";
+import { MockAdapter, ClaudeAdapter, CodexAdapter, StewardAdapter } from "@wardroom/adapters";
+import { WardroomEngine } from "@wardroom/core";
+import type { AgentAdapter } from "@wardroom/core";
 import { CLAUDE_SYSTEM_PROMPT, CODEX_SYSTEM_PROMPT, STEWARD_SYSTEM_PROMPT } from "../prompts.js";
 import { renderEvent, resetRenderer } from "../render.js";
 import { runInteractive } from "../interactive.js";
@@ -21,7 +21,7 @@ function collect(value: string, previous: string[]): string[] {
 }
 
 export const conveneCommand = new Command("convene")
-  .description("Start or resume a Roundtable deliberation")
+  .description("Start or resume a Wardroom deliberation")
   .argument("[path]", "Target folder path")
   .argument("[message]", "Initial message")
   .option("--session <id>", "Resume an existing session")
@@ -112,7 +112,7 @@ export const conveneCommand = new Command("convene")
     const adapters = options.mock ? createMockAdapters() : await createRealAdapters(config);
 
     // 6. Create engine
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters,
       config,
@@ -149,7 +149,7 @@ export const conveneCommand = new Command("convene")
         await runInteractive({ engine, session, renderOptions, once: options.once ?? false });
       } catch {
         console.error(`Error: session '${options.session}' not found.`);
-        console.error("Use 'roundtable sessions list' to see available sessions.");
+        console.error("Use 'wardroom sessions list' to see available sessions.");
         process.exit(1);
       }
       return;
@@ -270,7 +270,7 @@ async function detectCli(command: string, name: string): Promise<void> {
       console.error();
       console.error("To fix this, either:");
       console.error(`  1. Install the ${name} CLI and ensure it's in your PATH`);
-      console.error(`  2. Set a custom path in roundtable.config.yaml:`);
+      console.error(`  2. Set a custom path in wardroom.config.yaml:`);
       console.error(`       adapters:`);
       console.error(`         ${name.toLowerCase()}:`);
       console.error(`           command: /path/to/${command}`);

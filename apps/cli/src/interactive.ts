@@ -1,13 +1,13 @@
 import { createInterface } from "node:readline";
-import type { Session } from "@roundtable/core";
-import type { RoundtableEngine } from "@roundtable/core";
-import { generateTranscriptMarkdown } from "@roundtable/persistence";
-import { buildContextPack } from "@roundtable/context";
+import type { Session } from "@wardroom/core";
+import type { WardroomEngine } from "@wardroom/core";
+import { generateTranscriptMarkdown } from "@wardroom/persistence";
+import { buildContextPack } from "@wardroom/context";
 import { renderEvent, resetRenderer } from "./render.js";
 import type { RenderOptions } from "./render.js";
 
 export type InteractiveOptions = {
-  engine: RoundtableEngine;
+  engine: WardroomEngine;
   session: Session;
   renderOptions: RenderOptions;
   once: boolean;

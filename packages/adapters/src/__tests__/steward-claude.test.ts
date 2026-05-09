@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { StewardAdapter } from "../steward-claude.js";
-import type { AgentEvent, AgentInput, ContextPack, AdapterConfig } from "@roundtable/core";
-import { StewardDecisionSchema } from "@roundtable/core";
+import type { AgentEvent, AgentInput, ContextPack, AdapterConfig } from "@wardroom/core";
+import { StewardDecisionSchema } from "@wardroom/core";
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -96,7 +96,7 @@ function makeAgentInput(overrides?: Partial<AgentInput>): AgentInput {
     invocationId: randomUUID(),
     contextPack: makeContextPack(),
     transcript: [],
-    systemPrompt: "You are the Steward, a moderator in a roundtable deliberation.",
+    systemPrompt: "You are the Steward, a moderator in a wardroom deliberation.",
     deliberationId: "delib-001",
     ...overrides,
   };
@@ -108,7 +108,7 @@ describe("StewardAdapter", () => {
   let tmpBase: string;
 
   beforeEach(async () => {
-    tmpBase = join(tmpdir(), `roundtable-steward-test-${randomUUID()}`);
+    tmpBase = join(tmpdir(), `wardroom-steward-test-${randomUUID()}`);
     await mkdir(tmpBase, { recursive: true });
   });
 

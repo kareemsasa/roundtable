@@ -4,7 +4,7 @@ import { resolveConfig } from "../load-config.js";
 describe("resolveConfig", () => {
   it("returns defaults when no overrides provided", () => {
     const config = resolveConfig({});
-    expect(config.dataDir).toContain("roundtable");
+    expect(config.dataDir).toContain("wardroom");
     expect(config.context.budgetBytes).toBe(140_000);
     expect(config.context.maxFiles).toBe(75);
     expect(config.deliberation.maxRounds).toBe(2);
@@ -28,9 +28,9 @@ describe("resolveConfig", () => {
     expect(config.context.maxFileBytes).toBe(10_000);
   });
 
-  it("respects ROUNDTABLE_HOME env var", () => {
+  it("respects WARDROOM_HOME env var", () => {
     const config = resolveConfig({
-      env: { ROUNDTABLE_HOME: "/tmp/rt-test" },
+      env: { WARDROOM_HOME: "/tmp/rt-test" },
     });
     expect(config.dataDir).toBe("/tmp/rt-test");
   });

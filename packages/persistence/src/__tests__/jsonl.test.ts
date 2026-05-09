@@ -9,7 +9,7 @@ describe("jsonl", () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `roundtable-test-${randomUUID()}`);
+    testDir = join(tmpdir(), `wardroom-test-${randomUUID()}`);
     await mkdir(testDir, { recursive: true });
   });
 

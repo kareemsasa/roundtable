@@ -1,4 +1,4 @@
-import type { SessionEvent, TranscriptParticipant } from "@roundtable/core";
+import type { SessionEvent, TranscriptParticipant } from "@wardroom/core";
 
 export type RenderOptions = {
   verbose: boolean;
@@ -10,7 +10,8 @@ const PARTICIPANT_LABELS: Record<string, string> = {
   claude: "Claude",
   codex: "Codex",
   steward: "Steward",
-  roundtable: "Roundtable",
+  wardroom: "Wardroom",
+  roundtable: "Wardroom", // legacy: pre-rename events
 };
 
 let lastParticipant: TranscriptParticipant | undefined;
@@ -20,7 +21,7 @@ export function resetRenderer(): void {
 }
 
 function label(participant: TranscriptParticipant | undefined): string {
-  if (!participant) return "Roundtable";
+  if (!participant) return "Wardroom";
   return PARTICIPANT_LABELS[participant] ?? participant;
 }
 
@@ -115,7 +116,7 @@ export function renderEvent(event: SessionEvent, options: RenderOptions): void {
       const keptBytes = event.data.keptBytes as number;
       const who = event.participant ? `${label(event.participant)} ` : "";
       process.stderr.write(
-        `\nRoundtable [warning]: ${who}${stream} output truncated: kept ${keptBytes} of ${originalBytes} bytes.\n`,
+        `\nWardroom [warning]: ${who}${stream} output truncated: kept ${keptBytes} of ${originalBytes} bytes.\n`,
       );
       break;
     }

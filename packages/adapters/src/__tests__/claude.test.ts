@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClaudeAdapter } from "../claude.js";
-import type { AgentEvent, AgentInput, ContextPack, AdapterConfig } from "@roundtable/core";
+import type { AgentEvent, AgentInput, ContextPack, AdapterConfig } from "@wardroom/core";
 import { mkdir, writeFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -122,7 +122,7 @@ function makeAgentInput(overrides?: Partial<AgentInput>): AgentInput {
     invocationId: randomUUID(),
     contextPack: makeContextPack(),
     transcript: [],
-    systemPrompt: "You are a helpful assistant in a roundtable deliberation.",
+    systemPrompt: "You are a helpful assistant in a wardroom deliberation.",
     deliberationId: "delib-001",
     ...overrides,
   };
@@ -134,7 +134,7 @@ describe("ClaudeAdapter", () => {
   let tmpBase: string;
 
   beforeEach(async () => {
-    tmpBase = join(tmpdir(), `roundtable-claude-test-${randomUUID()}`);
+    tmpBase = join(tmpdir(), `wardroom-claude-test-${randomUUID()}`);
     await mkdir(tmpBase, { recursive: true });
   });
 

@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { resolveConfig } from "@roundtable/config";
-import { FileSessionStore, generateTranscriptMarkdown } from "@roundtable/persistence";
+import { resolveConfig } from "@wardroom/config";
+import { FileSessionStore, generateTranscriptMarkdown } from "@wardroom/persistence";
 
 function getStore() {
   const config = resolveConfig({ env: process.env as Record<string, string> });
@@ -43,7 +43,7 @@ export const showCommand = new Command("show")
         console.log(md);
       } catch {
         console.error(`Error: session '${sessionId}' not found.`);
-        console.error("Use 'roundtable sessions list' to see available sessions.");
+        console.error("Use 'wardroom sessions list' to see available sessions.");
         process.exit(1);
       }
     },

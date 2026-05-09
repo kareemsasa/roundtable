@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs/promises";
-import type { ContextConfig } from "@roundtable/core";
+import type { ContextConfig } from "@wardroom/core";
 import { buildContextPack } from "../build-context-pack.js";
 
 const FIXTURES = path.resolve(import.meta.dirname, "fixtures/sample-project");
@@ -45,12 +45,12 @@ describe("buildContextPack", () => {
     expect(readme!.bytes).toBeGreaterThan(0);
   });
 
-  it("includes ROUNDTABLE.md in the context pack", async () => {
+  it("includes WARDROOM.md in the context pack", async () => {
     const pack = await buildContextPack(FIXTURES, defaultConfig);
-    const rt = pack.files.find((f) => f.path === "ROUNDTABLE.md");
+    const rt = pack.files.find((f) => f.path === "WARDROOM.md");
 
     expect(rt).toBeDefined();
-    expect(rt!.category).toBe("roundtable_config");
+    expect(rt!.category).toBe("wardroom_config");
   });
 
   it("excludes .env.local from included files", async () => {
@@ -71,7 +71,7 @@ describe("buildContextPack", () => {
   it("redacts secrets in file content", async () => {
     // The .env.local is hard-denied so won't be in files.
     // Let's verify that if a file contains a secret pattern, it gets redacted.
-    // We'll test via the ROUNDTABLE.md or by checking that content is clean.
+    // We'll test via the WARDROOM.md or by checking that content is clean.
     const pack = await buildContextPack(FIXTURES, defaultConfig);
 
     // All file contents should not contain unredacted secret patterns

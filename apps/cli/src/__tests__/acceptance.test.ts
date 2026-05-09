@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { RoundtableEngine } from "@roundtable/core";
-import { MockAdapter } from "@roundtable/adapters";
-import { FileSessionStore } from "@roundtable/persistence";
-import { buildContextPack } from "@roundtable/context";
-import { resolveConfig } from "@roundtable/config";
+import { WardroomEngine } from "@wardroom/core";
+import { MockAdapter } from "@wardroom/adapters";
+import { FileSessionStore } from "@wardroom/persistence";
+import { buildContextPack } from "@wardroom/context";
+import { resolveConfig } from "@wardroom/config";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -40,7 +40,7 @@ describe("acceptance: mock-backed deliberation", () => {
       }),
     };
 
-    const engine = new RoundtableEngine({ store, adapters, config });
+    const engine = new WardroomEngine({ store, adapters, config });
 
     // Build context pack from fixtures
     const fixturesPath = join(

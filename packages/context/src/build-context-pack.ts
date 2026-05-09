@@ -10,7 +10,7 @@ import type {
   ContextPack,
   DirectoryTree,
   GitSummary,
-} from "@roundtable/core";
+} from "@wardroom/core";
 import { scanFolder } from "./scan-folder.js";
 import { selectFiles } from "./file-selection.js";
 import { redactSecrets } from "./redaction.js";

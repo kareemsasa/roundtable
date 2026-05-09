@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
-import type { ContextConfig } from "@roundtable/core";
+import type { ContextConfig } from "@wardroom/core";
 import { categorizeFile, isHardDenied, isDefaultExcluded, selectFiles } from "../file-selection.js";
 import type { ScannedFile } from "../scan-folder.js";
 
 describe("categorizeFile", () => {
-  it("categorizes ROUNDTABLE.md as roundtable_config", () => {
-    expect(categorizeFile("ROUNDTABLE.md")).toBe("roundtable_config");
+  it("categorizes WARDROOM.md as wardroom_config", () => {
+    expect(categorizeFile("WARDROOM.md")).toBe("wardroom_config");
   });
 
-  it("categorizes COUNCIL.md as roundtable_config", () => {
-    expect(categorizeFile("COUNCIL.md")).toBe("roundtable_config");
+  it("categorizes COUNCIL.md as wardroom_config", () => {
+    expect(categorizeFile("COUNCIL.md")).toBe("wardroom_config");
   });
 
   it("categorizes AGENTS.md as agent_config", () => {
@@ -100,10 +100,10 @@ describe("categorizeFile", () => {
     expect(categorizeFile("tests/__fixtures__/mock.json")).toBe("other");
   });
 
-  it("categorizes fixture ROUNDTABLE.md as other, not roundtable_config", () => {
-    expect(categorizeFile("fixtures/sample-project/ROUNDTABLE.md")).toBe("other");
+  it("categorizes fixture WARDROOM.md as other, not wardroom_config", () => {
+    expect(categorizeFile("fixtures/sample-project/WARDROOM.md")).toBe("other");
     expect(
-      categorizeFile("packages/context/src/__tests__/fixtures/sample-project/ROUNDTABLE.md"),
+      categorizeFile("packages/context/src/__tests__/fixtures/sample-project/WARDROOM.md"),
     ).toBe("other");
   });
 
@@ -111,8 +111,8 @@ describe("categorizeFile", () => {
     expect(categorizeFile("fixtures/sample-project/package.json")).toBe("other");
   });
 
-  it("still categorizes real ROUNDTABLE.md as roundtable_config", () => {
-    expect(categorizeFile("ROUNDTABLE.md")).toBe("roundtable_config");
+  it("still categorizes real WARDROOM.md as wardroom_config", () => {
+    expect(categorizeFile("WARDROOM.md")).toBe("wardroom_config");
   });
 });
 
@@ -278,16 +278,16 @@ describe("selectFiles", () => {
     const scanned: ScannedFile[] = [
       makeFile("src/index.ts", 100),
       makeFile("README.md", 200),
-      makeFile("ROUNDTABLE.md", 150),
+      makeFile("WARDROOM.md", 150),
       makeFile("docs/guide.md", 300),
     ];
 
     const result = selectFiles(scanned, defaultConfig);
     const paths = result.selected.map((f) => f.path);
 
-    // ROUNDTABLE.md (priority 1), README.md (priority 3),
+    // WARDROOM.md (priority 1), README.md (priority 3),
     // docs/guide.md (priority 6), src/index.ts (priority 7 — peripheral barrel)
-    expect(paths[0]).toBe("ROUNDTABLE.md");
+    expect(paths[0]).toBe("WARDROOM.md");
     expect(paths[1]).toBe("README.md");
     expect(paths[2]).toBe("docs/guide.md");
     expect(paths[3]).toBe("src/index.ts");
@@ -355,7 +355,7 @@ describe("selectFiles", () => {
 
   it("respects maxFiles with max_files_exhausted reason", () => {
     const scanned: ScannedFile[] = [
-      makeFile("ROUNDTABLE.md", 10),
+      makeFile("WARDROOM.md", 10),
       makeFile("README.md", 10),
       makeFile("src/a.ts", 10),
       makeFile("src/b.ts", 10),
@@ -368,7 +368,7 @@ describe("selectFiles", () => {
 
     const result = selectFiles(scanned, config);
     expect(result.selected).toHaveLength(2);
-    expect(result.selected[0]!.path).toBe("ROUNDTABLE.md");
+    expect(result.selected[0]!.path).toBe("WARDROOM.md");
     expect(result.selected[1]!.path).toBe("README.md");
 
     const omittedA = result.omitted.files.find((f) => f.path === "src/a.ts");
@@ -395,7 +395,7 @@ describe("selectFiles", () => {
 
   it("assigns correct categories to selected files", () => {
     const scanned: ScannedFile[] = [
-      makeFile("ROUNDTABLE.md", 100),
+      makeFile("WARDROOM.md", 100),
       makeFile("README.md", 100),
       makeFile("docs/guide.md", 100),
       makeFile("src/index.ts", 100),
@@ -405,7 +405,7 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, defaultConfig);
     const byPath = Object.fromEntries(result.selected.map((f) => [f.path, f]));
 
-    expect(byPath["ROUNDTABLE.md"]!.category).toBe("roundtable_config");
+    expect(byPath["WARDROOM.md"]!.category).toBe("wardroom_config");
     expect(byPath["README.md"]!.category).toBe("project_meta");
     expect(byPath["docs/guide.md"]!.category).toBe("documentation");
     expect(byPath["src/index.ts"]!.category).toBe("source");
@@ -685,11 +685,11 @@ describe("selectFiles", () => {
     expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
   });
 
-  it("includes essential Roundtable implementation files in representative monorepo", () => {
-    // Simulate the actual roundtable monorepo file layout
+  it("includes essential Wardroom implementation files in representative monorepo", () => {
+    // Simulate the actual wardroom monorepo file layout
     const scanned: ScannedFile[] = [
       // Root meta (priority 3)
-      makeFile("ROUNDTABLE.md", 160),
+      makeFile("WARDROOM.md", 160),
       makeFile("CLAUDE.md", 1340),
       makeFile("README.md", 8626),
       makeFile("package.json", 687),
@@ -828,7 +828,7 @@ describe("selectFiles", () => {
   });
 
   it("works generically for any monorepo with src/ convention", () => {
-    // Non-roundtable monorepo layout
+    // Non-wardroom monorepo layout
     const scanned: ScannedFile[] = [
       makeFile("README.md", 500),
       makeFile("packages/api/src/router.ts", 3000),
@@ -894,9 +894,9 @@ describe("selectFiles", () => {
     expect(bytesOmitted!.reason).toBe("budget_exhausted");
   });
 
-  it("fixture ROUNDTABLE.md does not outrank implementation source", () => {
+  it("fixture WARDROOM.md does not outrank implementation source", () => {
     const scanned: ScannedFile[] = [
-      makeFile("fixtures/sample-project/ROUNDTABLE.md", 160),
+      makeFile("fixtures/sample-project/WARDROOM.md", 160),
       makeFile("packages/core/src/engine.ts", 5000),
       makeFile("packages/core/src/turn-loop.ts", 4000),
     ];
@@ -913,8 +913,8 @@ describe("selectFiles", () => {
     expect(selectedPaths[0]).toBe("packages/core/src/engine.ts");
     expect(selectedPaths[1]).toBe("packages/core/src/turn-loop.ts");
 
-    // Fixture ROUNDTABLE.md omitted
+    // Fixture WARDROOM.md omitted
     const omittedPaths = result.omitted.files.map((f) => f.path);
-    expect(omittedPaths).toContain("fixtures/sample-project/ROUNDTABLE.md");
+    expect(omittedPaths).toContain("fixtures/sample-project/WARDROOM.md");
   });
 });

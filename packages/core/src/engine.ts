@@ -4,7 +4,7 @@ import { buildTranscript } from "./transcript.js";
 import type {
   AgentAdapter,
   ContextPack,
-  RoundtableConfig,
+  WardroomConfig,
   Session,
   SessionEvent,
   SessionMeta,
@@ -16,9 +16,9 @@ import type {
 // === Default System Prompts ===
 
 const DEFAULT_PROMPTS = {
-  claude: "You are Claude, participating in a Roundtable deliberation. Respond thoughtfully.",
-  codex: "You are Codex, participating in a Roundtable deliberation. Respond thoughtfully.",
-  steward: `You are the Steward, a moderator in a Roundtable deliberation.
+  claude: "You are Claude, participating in a Wardroom deliberation. Respond thoughtfully.",
+  codex: "You are Codex, participating in a Wardroom deliberation. Respond thoughtfully.",
+  steward: `You are the Steward, a moderator in a Wardroom deliberation.
 Evaluate the transcript and return a JSON object with this shape:
 { "status": "concluded" | "continue" | "needs_user", "reason": "...", "summary": "..." }
 Respond ONLY with the JSON object, no other text.`,
@@ -53,7 +53,7 @@ export type EngineOptions = {
     codex: AgentAdapter;
     steward: AgentAdapter;
   };
-  config: RoundtableConfig;
+  config: WardroomConfig;
   systemPrompts?: {
     claude: string;
     codex: string;
@@ -91,10 +91,10 @@ function makeSessionEvent(
 
 // === Engine ===
 
-export class RoundtableEngine {
+export class WardroomEngine {
   private store: SessionStore;
   private adapters: { claude: AgentAdapter; codex: AgentAdapter; steward: AgentAdapter };
-  private config: RoundtableConfig;
+  private config: WardroomConfig;
   private systemPrompts: { claude: string; codex: string; steward: string };
 
   constructor(options: EngineOptions) {
@@ -136,7 +136,7 @@ export class RoundtableEngine {
         targetPath,
         contextPackId: contextPack.id,
       },
-      { participant: "roundtable" },
+      { participant: "wardroom" },
     );
     await this.store.appendEvent(sessionId, sessionStartedEvent);
     events.push(sessionStartedEvent);
@@ -151,7 +151,7 @@ export class RoundtableEngine {
         fileCount: contextPack.stats.includedFiles,
         totalBytes: contextPack.stats.totalBytes,
       },
-      { participant: "roundtable" },
+      { participant: "wardroom" },
     );
     await this.store.appendEvent(sessionId, contextPackBuiltEvent);
     events.push(contextPackBuiltEvent);
@@ -389,7 +389,7 @@ export class RoundtableEngine {
             reason: "engine_error",
             error: errorMessage,
           },
-          { participant: "roundtable" },
+          { participant: "wardroom" },
         );
         await this.store.appendEvent(meta.id, errorEvent);
         session.events.push(errorEvent);
@@ -439,7 +439,7 @@ export class RoundtableEngine {
         fileCount: contextPack.stats.includedFiles,
         totalBytes: contextPack.stats.totalBytes,
       },
-      { participant: "roundtable" },
+      { participant: "wardroom" },
     );
     await this.store.appendEvent(meta.id, event);
     session.events.push(event);
@@ -463,7 +463,7 @@ export class RoundtableEngine {
       meta.id,
       {},
       {
-        participant: "roundtable",
+        participant: "wardroom",
       },
     );
     await this.store.appendEvent(meta.id, event);

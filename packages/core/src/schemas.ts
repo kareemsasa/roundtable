@@ -14,7 +14,8 @@ export const TranscriptParticipantSchema = z.enum([
   "claude",
   "codex",
   "steward",
-  "roundtable",
+  "wardroom",
+  "roundtable", // legacy: pre-rename events
 ]);
 
 export const EventTypeSchema = z.enum([

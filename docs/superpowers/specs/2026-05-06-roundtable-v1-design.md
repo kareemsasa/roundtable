@@ -1,3 +1,5 @@
+> Written under the original Roundtable codename. The project is now **Wardroom**.
+
 # Roundtable v1 Design Spec
 
 **Date:** 2026-05-06

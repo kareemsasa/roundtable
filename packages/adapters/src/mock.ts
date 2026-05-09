@@ -1,4 +1,4 @@
-import type { AgentAdapter, AgentEvent, AgentInput } from "@roundtable/core";
+import type { AgentAdapter, AgentEvent, AgentInput } from "@wardroom/core";
 
 export type MockAdapterConfig = {
   id: string;

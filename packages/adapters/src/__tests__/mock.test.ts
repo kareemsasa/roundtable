@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { MockAdapter } from "../mock.js";
-import type { AgentInput, AgentEvent, ContextPack } from "@roundtable/core";
+import type { AgentInput, AgentEvent, ContextPack } from "@wardroom/core";
 
 function makeInput(overrides?: Partial<AgentInput>): AgentInput {
   return {

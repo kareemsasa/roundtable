@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { RoundtableEngine } from "../engine.js";
+import { WardroomEngine } from "../engine.js";
 import { TestAdapter } from "./test-adapter.js";
 import { InMemorySessionStore } from "./in-memory-session-store.js";
 import { randomUUID } from "node:crypto";
-import type { RoundtableConfig, ContextPack, SessionEvent, AgentAdapter } from "../types.js";
+import type { WardroomConfig, ContextPack, SessionEvent, AgentAdapter } from "../types.js";
 
 // === Helpers ===
 
-function makeConfig(overrides: Partial<RoundtableConfig["deliberation"]> = {}): RoundtableConfig {
+function makeConfig(overrides: Partial<WardroomConfig["deliberation"]> = {}): WardroomConfig {
   return {
-    dataDir: "/tmp/roundtable-integ",
+    dataDir: "/tmp/wardroom-integ",
     context: { budgetBytes: 100_000, maxFiles: 50, maxFileBytes: 10_000, maxTreeDepth: 5 },
     deliberation: {
       maxRounds: 2,
@@ -124,7 +124,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("happy path: one-round deliberation with correct event sequence and meta updates", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", response: "Claude's analysis of the codebase." }),
@@ -189,7 +189,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("steward requests continue then concludes on second round", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", response: "Claude's analysis." }),
@@ -230,7 +230,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("maxRounds=1 stops deliberation even when steward says continue", async () => {
     const config = makeConfig({ maxRounds: 1 });
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", response: "Claude response." }),
@@ -268,7 +268,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("steward returns needs_user and deliberation ends with session awaiting_user", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", response: "Claude needs clarification." }),
@@ -306,7 +306,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("single participant failure: claude errors but codex and steward still work", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", error: "Claude process crashed unexpectedly" }),
@@ -323,10 +323,10 @@ describe("Integration: full product loop with test adapters", () => {
     const session = await engine.startSession("/tmp/test-project", cp);
     const events = await collectEvents(engine.submitMessage(session, "Fix the bug."));
 
-    // Verify agent_error event exists with participant "roundtable"
+    // Verify agent_error event exists with participant "wardroom"
     const errors = eventsOfType(events, "agent_error");
     expect(errors).toHaveLength(1);
-    expect(errors[0].participant).toBe("roundtable");
+    expect(errors[0].participant).toBe("wardroom");
     expect(errors[0].data.error).toContain("Claude process crashed unexpectedly");
 
     // Verify Codex still responds
@@ -355,7 +355,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("double participant failure: both claude and codex error, steward not invoked", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", error: "Claude crashed" }),
@@ -397,7 +397,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("steward returns invalid JSON: parse error emitted and deliberation ends safely", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", response: "Claude's thoughts." }),
@@ -417,7 +417,7 @@ describe("Integration: full product loop with test adapters", () => {
     // Verify steward_parse_error event exists
     const parseErrors = eventsOfType(events, "steward_parse_error");
     expect(parseErrors).toHaveLength(1);
-    expect(parseErrors[0].participant).toBe("roundtable");
+    expect(parseErrors[0].participant).toBe("wardroom");
     expect(parseErrors[0].data.rawContent).toBe("I think we should continue working on this.");
 
     // Verify deliberation ends safely with steward_parse_error reason
@@ -449,7 +449,7 @@ describe("Integration: full product loop with test adapters", () => {
       }),
     };
 
-    const engine1 = new RoundtableEngine({
+    const engine1 = new WardroomEngine({
       store,
       adapters: errorAdapters,
       config,
@@ -475,7 +475,7 @@ describe("Integration: full product loop with test adapters", () => {
       }),
     };
 
-    const engine2 = new RoundtableEngine({
+    const engine2 = new WardroomEngine({
       store,
       adapters: successAdapters,
       config,
@@ -511,7 +511,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("event log correctness: resumed session matches original events", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", response: "Claude's replay-test response." }),
@@ -568,7 +568,7 @@ describe("Integration: full product loop with test adapters", () => {
   // ---------------------------------------------------------------
   it("refreshContext updates context pack id and emits event between deliberations", async () => {
     const config = makeConfig();
-    const engine = new RoundtableEngine({
+    const engine = new WardroomEngine({
       store,
       adapters: {
         claude: new TestAdapter({ id: "claude", response: "Claude response." }),

@@ -25,7 +25,7 @@ describe("scanFolder", () => {
     expect(relativePaths).toContain("src/index.ts");
     expect(relativePaths).toContain(".env.local");
     expect(relativePaths).toContain("docs/guide.md");
-    expect(relativePaths).toContain("ROUNDTABLE.md");
+    expect(relativePaths).toContain("WARDROOM.md");
   });
 
   it("includes file sizes greater than zero", async () => {

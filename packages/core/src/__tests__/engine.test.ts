@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { RoundtableEngine, deriveSessionTitle } from "../engine.js";
+import { WardroomEngine, deriveSessionTitle } from "../engine.js";
 import { TestAdapter } from "./test-adapter.js";
 import { InMemorySessionStore } from "./in-memory-session-store.js";
 import { randomUUID } from "node:crypto";
-import type { RoundtableConfig, ContextPack, SessionEvent } from "../types.js";
+import type { WardroomConfig, ContextPack, SessionEvent } from "../types.js";
 
-function makeConfig(): RoundtableConfig {
+function makeConfig(): WardroomConfig {
   return {
-    dataDir: "/tmp/roundtable-test",
+    dataDir: "/tmp/wardroom-test",
     context: { budgetBytes: 100_000, maxFiles: 50, maxFileBytes: 10_000, maxTreeDepth: 5 },
     deliberation: { maxRounds: 2, participantTimeoutMs: 120_000, deliberationTimeoutMs: 600_000 },
     adapters: {
@@ -82,13 +82,13 @@ function makeMockAdapters() {
   };
 }
 
-describe("RoundtableEngine", () => {
+describe("WardroomEngine", () => {
   let store: InMemorySessionStore;
-  let engine: RoundtableEngine;
+  let engine: WardroomEngine;
 
   beforeEach(() => {
     store = new InMemorySessionStore();
-    engine = new RoundtableEngine({
+    engine = new WardroomEngine({
       store,
       adapters: makeMockAdapters(),
       config: makeConfig(),
@@ -249,7 +249,7 @@ describe("RoundtableEngine", () => {
     });
 
     it("saves meta.json with error for error invocations", async () => {
-      const errorEngine = new RoundtableEngine({
+      const errorEngine = new WardroomEngine({
         store,
         adapters: {
           claude: new TestAdapter({ id: "claude", error: "Claude process crashed" }),
@@ -284,7 +284,7 @@ describe("RoundtableEngine", () => {
     });
 
     it("saves meta.json for timeout invocations", async () => {
-      const timeoutEngine = new RoundtableEngine({
+      const timeoutEngine = new WardroomEngine({
         store,
         adapters: {
           claude: new TestAdapter({ id: "claude", timeout: true }),
@@ -388,7 +388,7 @@ describe("RoundtableEngine", () => {
         throw new Error("Adapter crashed unexpectedly");
       };
 
-      const errorEngine = new RoundtableEngine({
+      const errorEngine = new WardroomEngine({
         store,
         adapters: {
           claude: throwingAdapter,
@@ -428,7 +428,7 @@ describe("RoundtableEngine", () => {
       const failStore = new FailingSessionStore();
       failStore.failSaveArtifact = true;
 
-      const artifactEngine = new RoundtableEngine({
+      const artifactEngine = new WardroomEngine({
         store: failStore,
         adapters: makeMockAdapters(),
         config: makeConfig(),
@@ -455,7 +455,7 @@ describe("RoundtableEngine", () => {
       // Fail when the first agent_invocation_started event is appended
       failStore.failAppendOnType = "agent_invocation_started";
 
-      const appendEngine = new RoundtableEngine({
+      const appendEngine = new WardroomEngine({
         store: failStore,
         adapters: makeMockAdapters(),
         config: makeConfig(),
@@ -484,7 +484,7 @@ describe("RoundtableEngine", () => {
       const failStore = new FailingSessionStore();
       failStore.failAppendOnType = "agent_response_end";
 
-      const mdEngine = new RoundtableEngine({
+      const mdEngine = new WardroomEngine({
         store: failStore,
         adapters: makeMockAdapters(),
         config: makeConfig(),

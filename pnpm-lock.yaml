@@ -41,19 +41,19 @@ importers:
 
   apps/cli:
     dependencies:
-      '@roundtable/adapters':
+      '@wardroom/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
-      '@roundtable/config':
+      '@wardroom/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@roundtable/context':
+      '@wardroom/context':
         specifier: workspace:*
         version: link:../../packages/context
-      '@roundtable/core':
+      '@wardroom/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@roundtable/persistence':
+      '@wardroom/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
       commander:
@@ -66,19 +66,19 @@ importers:
 
   packages/adapters:
     dependencies:
-      '@roundtable/context':
+      '@wardroom/context':
         specifier: workspace:*
         version: link:../context
-      '@roundtable/core':
+      '@wardroom/core':
         specifier: workspace:*
         version: link:../core
-      '@roundtable/persistence':
+      '@wardroom/persistence':
         specifier: workspace:*
         version: link:../persistence
 
   packages/config:
     dependencies:
-      '@roundtable/core':
+      '@wardroom/core':
         specifier: workspace:*
         version: link:../core
       yaml:
@@ -90,7 +90,7 @@ importers:
 
   packages/context:
     dependencies:
-      '@roundtable/core':
+      '@wardroom/core':
         specifier: workspace:*
         version: link:../core
       minimatch:
@@ -108,7 +108,7 @@ importers:
 
   packages/persistence:
     dependencies:
-      '@roundtable/core':
+      '@wardroom/core':
         specifier: workspace:*
         version: link:../core
 

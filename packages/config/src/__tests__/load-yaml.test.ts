@@ -86,9 +86,9 @@ describe("loadConfigFiles", () => {
     await mkdir(projectDir, { recursive: true });
   });
 
-  it("loads roundtable.config.yaml from project dir", async () => {
+  it("loads wardroom.config.yaml from project dir", async () => {
     await writeFile(
-      join(projectDir, "roundtable.config.yaml"),
+      join(projectDir, "wardroom.config.yaml"),
       `context:
   budgetBytes: 75000
 `,
@@ -99,10 +99,10 @@ describe("loadConfigFiles", () => {
     expect(projectConfig.context?.budgetBytes).toBe(75000);
   });
 
-  it("loads .roundtable/config.yaml as fallback", async () => {
-    await mkdir(join(projectDir, ".roundtable"), { recursive: true });
+  it("loads .wardroom/config.yaml as fallback", async () => {
+    await mkdir(join(projectDir, ".wardroom"), { recursive: true });
     await writeFile(
-      join(projectDir, ".roundtable", "config.yaml"),
+      join(projectDir, ".wardroom", "config.yaml"),
       `deliberation:
   maxRounds: 5
 `,
@@ -113,17 +113,17 @@ describe("loadConfigFiles", () => {
     expect(projectConfig.deliberation?.maxRounds).toBe(5);
   });
 
-  it("prefers roundtable.config.yaml over .roundtable/config.yaml", async () => {
+  it("prefers wardroom.config.yaml over .wardroom/config.yaml", async () => {
     await writeFile(
-      join(projectDir, "roundtable.config.yaml"),
+      join(projectDir, "wardroom.config.yaml"),
       `context:
   budgetBytes: 60000
 `,
       "utf-8",
     );
-    await mkdir(join(projectDir, ".roundtable"), { recursive: true });
+    await mkdir(join(projectDir, ".wardroom"), { recursive: true });
     await writeFile(
-      join(projectDir, ".roundtable", "config.yaml"),
+      join(projectDir, ".wardroom", "config.yaml"),
       `context:
   budgetBytes: 40000
 `,

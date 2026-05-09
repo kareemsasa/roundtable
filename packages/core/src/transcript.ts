@@ -44,7 +44,7 @@ export function buildTranscript(events: SessionEvent[], maxBytes?: number): Tran
     const msgBytes = Buffer.byteLength(all[i].content, "utf-8");
     if (totalBytes + msgBytes > maxBytes && result.length > 0) {
       result.unshift({
-        participant: "roundtable",
+        participant: "wardroom",
         content: `[${i + 1} earlier message(s) omitted due to transcript budget]`,
         timestamp: all[0].timestamp,
       });

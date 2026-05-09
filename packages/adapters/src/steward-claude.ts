@@ -1,6 +1,6 @@
-import type { AgentAdapter, AgentInput, AgentEvent, AdapterConfig } from "@roundtable/core";
-import { renderContextPackMarkdown } from "@roundtable/context";
-import { tmpDir } from "@roundtable/persistence";
+import type { AgentAdapter, AgentInput, AgentEvent, AdapterConfig } from "@wardroom/core";
+import { renderContextPackMarkdown } from "@wardroom/context";
+import { tmpDir } from "@wardroom/persistence";
 import { mkdir, rm } from "node:fs/promises";
 import { spawnCliAgent } from "./cli-agent.js";
 

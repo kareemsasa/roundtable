@@ -1,6 +1,12 @@
 // === Participants ===
 
-export type TranscriptParticipant = "user" | "claude" | "codex" | "steward" | "roundtable";
+export type TranscriptParticipant =
+  | "user"
+  | "claude"
+  | "codex"
+  | "steward"
+  | "wardroom"
+  | "roundtable"; // legacy: pre-rename events
 
 // === Session State ===
 
@@ -78,7 +84,7 @@ export type TranscriptMessage = {
 // === Context Pack ===
 
 export type FileCategory =
-  | "roundtable_config"
+  | "wardroom_config"
   | "agent_config"
   | "project_meta"
   | "documentation"
@@ -163,7 +169,7 @@ export type DeliberationLimits = {
   maxTranscriptBytes?: number;
 };
 
-export type RoundtableConfig = {
+export type WardroomConfig = {
   dataDir: string;
   context: ContextConfig;
   deliberation: DeliberationLimits;
@@ -175,7 +181,7 @@ export type RoundtableConfig = {
 };
 
 /** Alias for clarity — a fully resolved config with no optionals */
-export type ResolvedConfig = RoundtableConfig;
+export type ResolvedConfig = WardroomConfig;
 
 // === Session Meta ===
 

@@ -1,4 +1,4 @@
-# Roundtable
+# Wardroom
 
 ## Project
 
@@ -30,7 +30,7 @@ After cloning, run `pnpm install` — this installs dependencies and sets up the
 - Strict TypeScript
 - Tests colocated in `src/__tests__/`
 - Zod schemas for all runtime boundaries (JSONL, config, CLI output parsing)
-- `@roundtable/*` package scope
+- `@wardroom/*` package scope
 
 ## Key Design Decisions
 

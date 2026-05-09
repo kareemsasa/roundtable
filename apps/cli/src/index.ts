@@ -6,7 +6,7 @@ import { showCommand } from "./commands/show.js";
 import { configCommand } from "./commands/config.js";
 
 const program = new Command()
-  .name("roundtable")
+  .name("wardroom")
   .description("Local-first group chat where Claude and Codex deliberate over a project folder")
   .version("0.0.1");
 

@@ -1,6 +1,6 @@
 # Sample Project
 
-A minimal project for manual smoke testing of `roundtable convene`.
+A minimal project for manual smoke testing of `wardroom convene`.
 
 ## Smoke Tests (from repo root)
 
@@ -8,19 +8,19 @@ A minimal project for manual smoke testing of `roundtable convene`.
 
 ```bash
 pnpm build
-pnpm roundtable convene ./fixtures/sample-project "What should I work on?" --once --mock
+pnpm wardroom convene ./fixtures/sample-project "What should I work on?" --once --mock
 ```
 
 **Dry run (no auth, no session created):**
 
 ```bash
-pnpm roundtable convene ./fixtures/sample-project --dry-run
+pnpm wardroom convene ./fixtures/sample-project --dry-run
 ```
 
 **Real mode (requires Claude + Codex CLI auth):**
 
 ```bash
-pnpm roundtable convene ./fixtures/sample-project "What should I work on?" --once
+pnpm wardroom convene ./fixtures/sample-project "What should I work on?" --once
 ```
 
 Real mode requires:

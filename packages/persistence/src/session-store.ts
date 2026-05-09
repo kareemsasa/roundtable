@@ -1,4 +1,4 @@
-import type { SessionMeta, SessionEvent, SessionStore, ContextPack } from "@roundtable/core";
+import type { SessionMeta, SessionEvent, SessionStore, ContextPack } from "@wardroom/core";
 import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { appendJsonl, readJsonl } from "./jsonl.js";

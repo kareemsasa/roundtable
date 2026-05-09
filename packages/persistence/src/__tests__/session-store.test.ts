@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm, readFile, readdir } from "node:fs/promises";
-import type { SessionMeta, SessionEvent, ContextPack, ResolvedConfig } from "@roundtable/core";
+import type { SessionMeta, SessionEvent, ContextPack, ResolvedConfig } from "@wardroom/core";
 import { FileSessionStore } from "../session-store.js";
 
 function makeConfig(): ResolvedConfig {
@@ -95,7 +95,7 @@ describe("FileSessionStore", () => {
   let store: FileSessionStore;
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `roundtable-test-${randomUUID()}`);
+    testDir = join(tmpdir(), `wardroom-test-${randomUUID()}`);
     await mkdir(testDir, { recursive: true });
     store = new FileSessionStore(testDir);
   });

@@ -1,5 +1,5 @@
 {
-  "name": "@roundtable/adapters",
+  "name": "@wardroom/adapters",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.js",
@@ -14,8 +14,8 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@roundtable/core": "workspace:*",
-    "@roundtable/context": "workspace:*",
-    "@roundtable/persistence": "workspace:*"
+    "@wardroom/core": "workspace:*",
+    "@wardroom/context": "workspace:*",
+    "@wardroom/persistence": "workspace:*"
   }
 }

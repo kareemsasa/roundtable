@@ -49,13 +49,13 @@ describe("buildTranscript", () => {
     expect(transcript[0].content).toBe("Both agree on refactoring.");
   });
 
-  it("includes visible errors as roundtable messages", () => {
+  it("includes visible errors as wardroom messages", () => {
     const events = [
-      makeEvent("agent_error", "roundtable", { error: "Codex failed: timeout after 120s." }),
+      makeEvent("agent_error", "wardroom", { error: "Codex failed: timeout after 120s." }),
     ];
     const transcript = buildTranscript(events);
     expect(transcript).toHaveLength(1);
-    expect(transcript[0].participant).toBe("roundtable");
+    expect(transcript[0].participant).toBe("wardroom");
     expect(transcript[0].content).toContain("Codex failed");
   });
 
@@ -63,7 +63,7 @@ describe("buildTranscript", () => {
     const events = [
       makeEvent("agent_invocation_started", "claude", { invocationId: "inv_001" }),
       makeEvent("agent_chunk", "claude", { content: "partial", stream: "stdout" }),
-      makeEvent("engine_state_changed", "roundtable", { from: "x", to: "y", reason: "z" }),
+      makeEvent("engine_state_changed", "wardroom", { from: "x", to: "y", reason: "z" }),
     ];
     const transcript = buildTranscript(events);
     expect(transcript).toHaveLength(0);
@@ -91,7 +91,7 @@ describe("buildTranscript", () => {
     // Should keep the most recent messages and prepend an omission notice
     const omissionMsg = transcript.find((t) => t.content.includes("omitted"));
     expect(omissionMsg).toBeDefined();
-    expect(omissionMsg!.participant).toBe("roundtable");
+    expect(omissionMsg!.participant).toBe("wardroom");
     // Most recent messages should be present
     expect(transcript[transcript.length - 1].content).toBe("D".repeat(100));
   });
@@ -158,7 +158,7 @@ describe("buildTranscript", () => {
     // Should have omission notice
     const omission = transcript.find((t) => t.content.includes("omitted"));
     expect(omission).toBeDefined();
-    expect(omission!.participant).toBe("roundtable");
+    expect(omission!.participant).toBe("wardroom");
 
     // Most recent messages should be present
     expect(transcript[transcript.length - 1].content).toBe("E".repeat(200));

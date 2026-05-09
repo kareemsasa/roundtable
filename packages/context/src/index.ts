@@ -1,4 +1,4 @@
-// @roundtable/context — folder scanner, context pack builder
+// @wardroom/context — folder scanner, context pack builder
 export { buildContextPack } from "./build-context-pack.js";
 export { scanFolder } from "./scan-folder.js";
 export type { ScannedFile } from "./scan-folder.js";

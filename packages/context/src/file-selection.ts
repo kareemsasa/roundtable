@@ -1,4 +1,4 @@
-import type { ContextConfig, FileCategory, OmittedReport } from "@roundtable/core";
+import type { ContextConfig, FileCategory, OmittedReport } from "@wardroom/core";
 import { minimatch } from "minimatch";
 import type { ScannedFile } from "./scan-folder.js";
 
@@ -15,7 +15,7 @@ export type SelectionResult = {
 
 // --- Priority buckets (1 = highest) ---
 
-const ROUNDTABLE_CONFIG_FILES = new Set(["ROUNDTABLE.md", "COUNCIL.md"]);
+const WARDROOM_CONFIG_FILES = new Set(["WARDROOM.md", "COUNCIL.md"]);
 
 const AGENT_CONFIG_FILES = new Set(["AGENTS.md", "CLAUDE.md", ".cursorrules"]);
 
@@ -128,7 +128,7 @@ export function categorizeFile(relativePath: string): FileCategory {
 
   const basename = getBasename(relativePath);
 
-  if (ROUNDTABLE_CONFIG_FILES.has(basename)) return "roundtable_config";
+  if (WARDROOM_CONFIG_FILES.has(basename)) return "wardroom_config";
   if (AGENT_CONFIG_FILES.has(basename)) return "agent_config";
   if (PROJECT_META_FILES.has(basename)) return "project_meta";
   if (CONFIG_EXACT_FILES.has(basename)) return "config";
@@ -203,7 +203,7 @@ function priorityOf(category: FileCategory, relativePath: string): number {
   if (isFixturePath(relativePath)) return 11;
 
   switch (category) {
-    case "roundtable_config":
+    case "wardroom_config":
       return 1;
     case "agent_config":
       return 2;

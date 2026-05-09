@@ -233,7 +233,7 @@ describe("runDeliberation", () => {
     // Should have an agent_error for claude
     const errors = eventsOfType(events, "agent_error");
     expect(errors).toHaveLength(1);
-    expect(errors[0].participant).toBe("roundtable");
+    expect(errors[0].participant).toBe("wardroom");
     expect(errors[0].data.error).toContain("Claude process crashed");
 
     // Codex should still respond
@@ -296,7 +296,7 @@ describe("runDeliberation", () => {
     // Should have a steward_parse_error
     const parseErrors = eventsOfType(events, "steward_parse_error");
     expect(parseErrors).toHaveLength(1);
-    expect(parseErrors[0].participant).toBe("roundtable");
+    expect(parseErrors[0].participant).toBe("wardroom");
 
     // Should end with steward_parse_error reason
     const ended = events[events.length - 1];
@@ -369,7 +369,7 @@ describe("runDeliberation", () => {
     // Should capture the thrown error as an agent_error
     const errors = eventsOfType(events, "agent_error");
     expect(errors).toHaveLength(1);
-    expect(errors[0].participant).toBe("roundtable");
+    expect(errors[0].participant).toBe("wardroom");
     expect(errors[0].data.error).toContain("Unexpected adapter crash");
 
     // Codex still runs, steward still decides
@@ -396,7 +396,7 @@ describe("runDeliberation", () => {
     // Timeout should be emitted as agent_invocation_timeout
     const timeouts = eventsOfType(events, "agent_invocation_timeout");
     expect(timeouts).toHaveLength(1);
-    expect(timeouts[0].participant).toBe("roundtable");
+    expect(timeouts[0].participant).toBe("wardroom");
 
     // Should still continue with codex and steward
     const codexResponses = eventsOfType(events, "agent_response_end").filter(

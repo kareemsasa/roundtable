@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { spawnCliAgent } from "../cli-agent.js";
-import type { AgentEvent } from "@roundtable/core";
+import type { AgentEvent } from "@wardroom/core";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -164,7 +164,7 @@ describe("spawnCliAgent", () => {
   });
 
   it("respects custom cwd", async () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "roundtable-test-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "wardroom-test-"));
     const events = await collectEvents(
       spawnCliAgent({
         command: "node",

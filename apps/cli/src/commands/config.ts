@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { resolveConfig } from "@roundtable/config";
+import { resolveConfig } from "@wardroom/config";
 import { writeFile, stat } from "node:fs/promises";
 
 export const configCommand = new Command("config").description("Manage configuration");
@@ -14,9 +14,9 @@ configCommand
 
 configCommand
   .command("init")
-  .description("Generate a roundtable.config.yaml template")
+  .description("Generate a wardroom.config.yaml template")
   .action(async () => {
-    const filename = "roundtable.config.yaml";
+    const filename = "wardroom.config.yaml";
     try {
       await stat(filename);
       console.error(`Error: ${filename} already exists.`);
@@ -25,8 +25,8 @@ configCommand
       // File doesn't exist — good
     }
 
-    const template = `# Roundtable Configuration
-# See: docs/superpowers/specs/2026-05-06-roundtable-v1-design.md
+    const template = `# Wardroom Configuration
+# See: docs/superpowers/specs/2026-05-06-wardroom-v1-design.md
 
 context:
   budgetBytes: 100000

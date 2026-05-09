@@ -1,4 +1,4 @@
-import type { ContextPack } from "@roundtable/core";
+import type { ContextPack } from "@wardroom/core";
 
 export function renderContextPackMarkdown(pack: ContextPack): string {
   const lines: string[] = [];

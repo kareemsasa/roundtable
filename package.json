@@ -1,5 +1,5 @@
 {
-  "name": "roundtable",
+  "name": "wardroom",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b",
-    "roundtable": "node apps/cli/dist/index.js",
+    "wardroom": "node apps/cli/dist/index.js",
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {

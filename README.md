@@ -1,15 +1,15 @@
-# Roundtable
+# Wardroom
 
 Local-first persistent group chat where Claude and Codex deliberate over a project folder.
 
-> **Note:** This is an independent, open-source, local-first developer tool. It is not affiliated with [roundtable.now](https://roundtable.now) or any other similarly named AI council/debate products. This project focuses on CLI-driven, artifact-backed deliberation over local codebases — not hosted multi-model brainstorming SaaS. A rename may be forthcoming before public release.
+Previously known as Roundtable. Renamed to avoid confusion with existing products in the AI council/debate space.
 
 ## What It Does
 
-You point Roundtable at a folder and ask a question. Claude and Codex respond to you and each other. A moderator called the Steward summarizes when the room reaches consensus or a useful decision point.
+You point Wardroom at a folder and ask a question. Claude and Codex respond to you and each other. A moderator called the Steward summarizes when the room reaches consensus or a useful decision point.
 
 ```
-$ roundtable convene ~/code/my-project "Should we refactor the auth module?"
+$ wardroom convene ~/code/my-project "Should we refactor the auth module?"
 
 Building context pack... done (32 files, 78KB)
 Session rt_abc123 started
@@ -32,19 +32,19 @@ or replace wholesale.
 
 ```bash
 # Clone and install
-git clone <repo-url> roundtable
-cd roundtable
+git clone <repo-url> wardroom
+cd wardroom
 pnpm install
 pnpm build
 
 # Run with mock adapters (no auth required)
-pnpm roundtable convene ./fixtures/sample-project "What should I work on?" --once --mock
+pnpm wardroom convene ./fixtures/sample-project "What should I work on?" --once --mock
 
 # Preview what context would be sent (no session, no invocations)
-pnpm roundtable convene ./fixtures/sample-project --dry-run
+pnpm wardroom convene ./fixtures/sample-project --dry-run
 
 # Run with real Claude + Codex (requires auth)
-pnpm roundtable convene ~/code/my-project "Should we refactor this?"
+pnpm wardroom convene ~/code/my-project "Should we refactor this?"
 ```
 
 ### Real Mode Requirements
@@ -54,7 +54,7 @@ Real mode invokes Claude and Codex via their CLI commands:
 - **Claude CLI**: Install from [claude.ai](https://claude.ai), authenticate with `claude auth`
 - **Codex CLI**: Install from [openai.com](https://openai.com), authenticate with `codex login`
 
-If either CLI is missing, Roundtable shows an actionable error with install instructions. Use `--mock` to test without authentication.
+If either CLI is missing, Wardroom shows an actionable error with install instructions. Use `--mock` to test without authentication.
 
 ## Commands
 
@@ -62,10 +62,10 @@ If either CLI is missing, Roundtable shows an actionable error with install inst
 
 ```bash
 # New session on a folder
-roundtable convene <path> [message]
+wardroom convene <path> [message]
 
 # Resume an existing session
-roundtable convene --session <id> [message]
+wardroom convene --session <id> [message]
 ```
 
 **Flags:**
@@ -99,22 +99,22 @@ roundtable convene --session <id> [message]
 ### `sessions` - Manage sessions
 
 ```bash
-roundtable sessions list
-roundtable sessions archive <id>
+wardroom sessions list
+wardroom sessions archive <id>
 ```
 
 ### `show` - View session transcript
 
 ```bash
-roundtable show <session-id>
-roundtable show --latest
+wardroom show <session-id>
+wardroom show --latest
 ```
 
 ### `config` - Configuration
 
 ```bash
-roundtable config show        # Show resolved config
-roundtable config init        # Generate roundtable.config.yaml template
+wardroom config show        # Show resolved config
+wardroom config init        # Generate wardroom.config.yaml template
 ```
 
 ## Configuration
@@ -122,11 +122,11 @@ roundtable config init        # Generate roundtable.config.yaml template
 Config is resolved in this order (later overrides earlier):
 
 1. Built-in defaults
-2. `~/.config/roundtable/config.yaml` (user-global)
-3. `roundtable.config.yaml` or `.roundtable/config.yaml` (project-local)
+2. `~/.config/wardroom/config.yaml` (user-global)
+3. `wardroom.config.yaml` or `.wardroom/config.yaml` (project-local)
 4. CLI flags
 
-Generate a starter config with `roundtable config init`:
+Generate a starter config with `wardroom config init`:
 
 ```yaml
 context:
@@ -146,15 +146,15 @@ adapters:
     command: codex # path to Codex CLI
 ```
 
-Set `ROUNDTABLE_HOME` to override the default data directory (`~/.local/share/roundtable`).
+Set `WARDROOM_HOME` to override the default data directory (`~/.local/share/wardroom`).
 
 ## How It Works
 
 ### Context Pack
 
-Roundtable builds a curated snapshot of the target folder — not ambient filesystem access. Files are selected by priority within a byte budget:
+Wardroom builds a curated snapshot of the target folder — not ambient filesystem access. Files are selected by priority within a byte budget:
 
-1. `ROUNDTABLE.md`, `COUNCIL.md` (project-specific context)
+1. `WARDROOM.md`, `COUNCIL.md` (project-specific context)
 2. `AGENTS.md`, `CLAUDE.md` (agent configs)
 3. Git summary (branch, recent commits, status)
 4. `README.md`, `package.json`, `tsconfig.json` (project metadata)
@@ -182,7 +182,7 @@ Hard caps prevent runaway loops (max 2 rounds by default, configurable). Transcr
 
 ### Persistence
 
-Sessions are stored as directories under `~/.local/share/roundtable/sessions/`:
+Sessions are stored as directories under `~/.local/share/wardroom/sessions/`:
 
 ```
 <session-id>/
@@ -197,13 +197,13 @@ Sessions are stored as directories under `~/.local/share/roundtable/sessions/`:
 
 **v1 is read-only by design, not by kernel enforcement.**
 
-- Roundtable reads the target folder to build a context pack, then never touches it again
+- Wardroom reads the target folder to build a context pack, then never touches it again
 - Claude and Codex are invoked in the lowest-permission modes their CLIs support:
   - Claude: `--permission-mode plan --tools ""`
   - Codex: `--sandbox read-only`
 - Adapters spawn processes in a temp directory, not the target folder
 - System prompts explicitly forbid writes, command execution, and mutations
-- Session data is written only to Roundtable's own data directory
+- Session data is written only to Wardroom's own data directory
 - No OS-level sandboxing in v1 (planned for later)
 
 ## Streaming Behavior
@@ -225,7 +225,7 @@ If output exceeds the adapter's byte limit, a visible truncation warning appears
 
 ## Sessions
 
-Sessions are automatically titled from the first user message (truncated at ~80 characters). Use `roundtable sessions list` to see all sessions with their titles and status.
+Sessions are automatically titled from the first user message (truncated at ~80 characters). Use `wardroom sessions list` to see all sessions with their titles and status.
 
 ## Known Limitations (v1)
 
@@ -240,7 +240,7 @@ Sessions are automatically titled from the first user message (truncated at ~80 
 
 ```bash
 pnpm install && pnpm build
-pnpm roundtable convene ./my-project "question"
+pnpm wardroom convene ./my-project "question"
 ```
 
 **Direct execution (after build):**
@@ -253,7 +253,7 @@ node apps/cli/dist/index.js convene ./my-project "question"
 
 ```bash
 cd apps/cli && pnpm link --global
-roundtable convene ./my-project "question"
+wardroom convene ./my-project "question"
 ```
 
 ## Development

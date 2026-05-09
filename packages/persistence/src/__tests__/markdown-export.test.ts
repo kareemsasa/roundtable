@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { SessionEvent, StewardDecision } from "@roundtable/core";
+import type { SessionEvent, StewardDecision } from "@wardroom/core";
 import { generateTranscriptMarkdown, generateStewardSummaryMarkdown } from "../markdown-export.js";
 
 function makeEvent(overrides: Partial<SessionEvent>): SessionEvent {
@@ -37,7 +37,7 @@ describe("generateTranscriptMarkdown", () => {
     ];
 
     const md = generateTranscriptMarkdown(events, "sess_001");
-    expect(md).toContain("# Roundtable Transcript");
+    expect(md).toContain("# Wardroom Transcript");
     expect(md).toContain("Session: `sess_001`");
     expect(md).toContain("**You**");
     expect(md).toContain("What should we refactor?");
@@ -153,18 +153,18 @@ describe("generateTranscriptMarkdown", () => {
     expect(md).not.toContain("**Recommended Actions:**");
   });
 
-  it("renders agent errors with Roundtable label", () => {
+  it("renders agent errors with Wardroom label", () => {
     const events: SessionEvent[] = [
       makeEvent({
         id: "evt_e",
         type: "agent_error",
-        participant: "roundtable",
+        participant: "wardroom",
         data: { error: "Claude process timed out after 60s" },
       }),
     ];
 
     const md = generateTranscriptMarkdown(events, "sess_003");
-    expect(md).toContain("**Roundtable**");
+    expect(md).toContain("**Wardroom**");
     expect(md).toContain("Claude process timed out after 60s");
   });
 

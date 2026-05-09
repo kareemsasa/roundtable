@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.2.0 — 2026-05-09
+
+Renamed from Roundtable to **Wardroom** to avoid confusion with existing products in the AI council/debate space. All functionality is unchanged.
+
+- Rename all packages from `@roundtable/*` to `@wardroom/*`
+- CLI binary: `roundtable` → `wardroom`
+- Config file: `roundtable.config.yaml` → `wardroom.config.yaml`
+- Config dir: `~/.config/roundtable/` → `~/.config/wardroom/`
+- Data dir: `~/.local/share/roundtable/` → `~/.local/share/wardroom/`
+- Env var: `ROUNDTABLE_HOME` → `WARDROOM_HOME`
+- Context file: `ROUNDTABLE.md` → `WARDROOM.md`
+- Legacy `"roundtable"` participant in old event logs is accepted and displayed as "Wardroom"
+
+Releases v0.1.0–v0.1.9 below were published under the original Roundtable codename.
+
 ## v0.1.9 — 2026-05-09
 
 - Set default `maxTranscriptBytes` to 131,072 (128 KiB)

@@ -107,9 +107,9 @@ async function* invokeAdapter(
     for await (const agentEvent of adapter.invoke(input, signal)) {
       const sessionType = mapAgentEventType(agentEvent.type);
 
-      // For errors and timeouts, set participant to "roundtable"
+      // For errors and timeouts, set participant to "wardroom"
       const isErrorLike = agentEvent.type === "error" || agentEvent.type === "timeout";
-      const eventParticipant: TranscriptParticipant = isErrorLike ? "roundtable" : participant;
+      const eventParticipant: TranscriptParticipant = isErrorLike ? "wardroom" : participant;
 
       // Extract data from the agent event (strip the 'type' field)
       const { type: _agentType, ...data } = agentEvent;
@@ -143,7 +143,7 @@ async function* invokeAdapter(
       {
         deliberationId,
         contextPackId,
-        participant: "roundtable",
+        participant: "wardroom",
       },
     );
   }
@@ -228,7 +228,7 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
           {
             deliberationId,
             contextPackId,
-            participant: "roundtable",
+            participant: "wardroom",
           },
         ),
       );
@@ -366,7 +366,7 @@ export async function* runDeliberation(input: DeliberationInput): AsyncGenerator
           {
             deliberationId,
             contextPackId,
-            participant: "roundtable",
+            participant: "wardroom",
           },
         ),
       );

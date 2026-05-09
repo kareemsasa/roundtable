@@ -1,4 +1,4 @@
-import type { RoundtableConfig } from "@roundtable/core";
+import type { WardroomConfig } from "@wardroom/core";
 import { DEFAULT_CONFIG } from "./defaults.js";
 import type { PartialConfig } from "./schema.js";
 
@@ -11,21 +11,21 @@ type ResolveInput = {
   cliOverrides?: PartialConfig;
 };
 
-export function resolveConfig(input: ResolveInput): RoundtableConfig {
+export function resolveConfig(input: ResolveInput): WardroomConfig {
   const { env = {}, globalConfig = {}, projectConfig = {}, cliOverrides = {} } = input;
 
   // Start with defaults
   let config = structuredClone(DEFAULT_CONFIG);
 
-  // Layer 2: global config (~/.config/roundtable/config.yaml)
+  // Layer 2: global config (~/.config/wardroom/config.yaml)
   config = deepMerge(config, globalConfig);
 
-  // Layer 3: project config (roundtable.config.yaml / .roundtable/config.yaml)
+  // Layer 3: project config (wardroom.config.yaml / .wardroom/config.yaml)
   config = deepMerge(config, projectConfig);
 
-  // ROUNDTABLE_HOME env var overrides config files but not CLI flags
-  if (env.ROUNDTABLE_HOME) {
-    config.dataDir = env.ROUNDTABLE_HOME;
+  // WARDROOM_HOME env var overrides config files but not CLI flags
+  if (env.WARDROOM_HOME) {
+    config.dataDir = env.WARDROOM_HOME;
   }
 
   // Layer 4: CLI flags (highest precedence)

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { SessionEvent } from "@roundtable/core";
+import type { SessionEvent } from "@wardroom/core";
 import { renderEvent, resetRenderer, type RenderOptions } from "../render.js";
 
 function makeEvent(
@@ -154,7 +154,7 @@ describe("renderEvent", () => {
     it("renders truncation warning with stream and byte counts", () => {
       renderEvent(truncatedEvent, streamOpts);
       const output = renderedStderr();
-      expect(output).toContain("Roundtable [warning]");
+      expect(output).toContain("Wardroom [warning]");
       expect(output).toContain("stdout");
       expect(output).toContain("524288");
       expect(output).toContain("640000");
@@ -170,13 +170,13 @@ describe("renderEvent", () => {
       renderEvent(truncatedEvent, streamOpts);
       // Warning goes to stderr, not stdout — should not appear as participant speech
       expect(rendered()).toBe("");
-      expect(renderedStderr()).toContain("Roundtable [warning]");
+      expect(renderedStderr()).toContain("Wardroom [warning]");
     });
 
     it("renders warning in --no-stream mode", () => {
       renderEvent(truncatedEvent, nonStreamOpts);
       const output = renderedStderr();
-      expect(output).toContain("Roundtable [warning]");
+      expect(output).toContain("Wardroom [warning]");
       expect(output).toContain("truncated");
       expect(output).toContain("524288");
     });
@@ -189,7 +189,7 @@ describe("renderEvent", () => {
       });
       renderEvent(noParticipant, streamOpts);
       const output = renderedStderr();
-      expect(output).toContain("Roundtable [warning]");
+      expect(output).toContain("Wardroom [warning]");
       expect(output).toContain("stderr");
       expect(output).not.toContain("Claude");
       expect(output).not.toContain("Codex");
