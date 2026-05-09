@@ -77,8 +77,8 @@ roundtable convene --session <id> [message]
 | `--dry-run`            | Preview context pack without invoking     |
 | `--session <id>`       | Resume an existing session                |
 | `--max-rounds <n>`     | Max deliberation rounds (default: 2)      |
-| `--context-budget <n>` | Context budget in bytes (default: 100000) |
-| `--max-files <n>`      | Max files in context pack (default: 50)   |
+| `--context-budget <n>` | Context budget in bytes (default: 140000) |
+| `--max-files <n>`      | Max files in context pack (default: 75)   |
 | `--include <glob>`     | Include file pattern (repeatable)         |
 | `--exclude <glob>`     | Exclude file pattern (repeatable)         |
 | `--no-stream`          | Wait for full responses                   |
@@ -130,13 +130,14 @@ Generate a starter config with `roundtable config init`:
 
 ```yaml
 context:
-  budgetBytes: 100000
-  maxFiles: 50
+  budgetBytes: 140000
+  maxFiles: 75
   maxFileBytes: 10000
 
 deliberation:
   maxRounds: 2
   participantTimeoutMs: 120000
+  maxTranscriptBytes: 131072 # 128 KiB; prevents unbounded transcript growth
 
 adapters:
   claude:
@@ -169,15 +170,15 @@ Each deliberation follows a fixed round-robin:
 
 ```
 User message
-  -> Claude responds (sees context pack + full transcript)
-  -> Codex responds (sees context pack + full transcript including Claude)
-  -> Steward evaluates (sees full transcript)
+  -> Claude responds (sees context pack + recent transcript)
+  -> Codex responds (sees context pack + recent transcript including Claude)
+  -> Steward evaluates (sees recent transcript)
      -> "concluded": emit summary, return to prompt
      -> "continue": another round (up to max)
      -> "needs_user": return to prompt for clarification
 ```
 
-Hard caps prevent runaway loops (max 2 rounds by default, configurable).
+Hard caps prevent runaway loops (max 2 rounds by default, configurable). Transcript history is capped at 128 KiB by default — older messages are omitted with a notice while recent messages are preserved.
 
 ### Persistence
 
@@ -207,7 +208,11 @@ Sessions are stored as directories under `~/.local/share/roundtable/sessions/`:
 
 ## Streaming Behavior
 
-Claude responses stream incrementally in real mode. Codex currently renders after completion because `codex exec --json` emits completed message events rather than text deltas. Steward remains buffered because it returns structured JSON decisions.
+- **Claude** streams incrementally — output appears token-by-token as it arrives
+- **Codex** renders after completion — `codex exec --json` emits completed message events, not text deltas
+- **Steward** remains buffered — returns structured JSON decisions that are parsed before display
+
+If output exceeds the adapter's byte limit, a visible truncation warning appears on stderr with the byte counts.
 
 ## v1 Non-Goals
 
@@ -218,10 +223,14 @@ Claude responses stream incrementally in real mode. Codex currently renders afte
 - No custom/pluggable agents
 - No Steward permission escalation
 
+## Sessions
+
+Sessions are automatically titled from the first user message (truncated at ~80 characters). Use `roundtable sessions list` to see all sessions with their titles and status.
+
 ## Known Limitations (v1)
 
 - **No OS-level sandboxing** — read-only by design, not by kernel enforcement
-- **Buffered streaming** — CLI output is collected per invocation, not streamed token-by-token in real time
+- **Codex output is buffered** — `codex exec --json` emits completed items, not streaming deltas
 - **Simple transcript truncation** — long sessions are trimmed with a notice, not summarized intelligently
 - **Codex system prompt is embedded in user prompt** — `codex exec` has no `--system-prompt` flag
 
@@ -252,7 +261,7 @@ roundtable convene ./my-project "question"
 ```bash
 pnpm install       # install dependencies
 pnpm build         # compile all packages
-pnpm test          # run test suite (240 tests)
+pnpm test          # run test suite (325 tests)
 pnpm lint          # lint
 pnpm format:check  # check formatting
 ```
