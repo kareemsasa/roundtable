@@ -377,6 +377,54 @@ describe("ClaudeAdapter", () => {
     expect(stdoutChunks).toHaveLength(0);
   });
 
+  it("streams chunks after prefix buffer is clean", async () => {
+    // Fake claude that emits enough output to exceed prefix buffer (2KB)
+    const scriptPath = join(tmpBase, "fake-claude-stream");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  // Emit 3KB in small chunks to exceed the 2KB prefix buffer
+  for (let i = 0; i < 30; i++) {
+    process.stdout.write("x".repeat(100) + "\\n");
+  }
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    // Should have chunks AND response_end (not error)
+    const chunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
+    expect(chunks.length).toBeGreaterThan(0);
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeUndefined();
+  });
+
+  it("short clean response (< prefix buffer) still yields chunks", async () => {
+    // A short response that doesn't exceed the prefix buffer threshold
+    const fakeCmd = await createFakeClaude(tmpBase, "echo");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new ClaudeAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    // Chunks should be flushed when response_end arrives
+    const chunks = events.filter((e) => e.type === "chunk" && e.stream === "stdout");
+    expect(chunks.length).toBeGreaterThan(0);
+
+    const responseEnd = events.find((e) => e.type === "response_end");
+    expect(responseEnd).toBeDefined();
+  });
+
   it("system prompt is passed via --system-prompt flag", async () => {
     // Use a fake-claude that dumps args to verify
     const scriptPath = join(tmpBase, "fake-claude-args");

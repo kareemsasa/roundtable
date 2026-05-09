@@ -4,6 +4,19 @@ import { tmpDir } from "@roundtable/persistence";
 import { mkdir, rm } from "node:fs/promises";
 import { spawnCliAgent } from "./cli-agent.js";
 
+/**
+ * Prefix buffer size in bytes. Auth/error messages from the Claude CLI appear
+ * in the first few hundred bytes. We buffer this much before streaming so that
+ * error text is never displayed as participant speech.
+ *
+ * Caveat: if an error pattern appears *after* the prefix has been flushed and
+ * streaming has begun, the user may have already seen partial output. In that
+ * case the response_end is still converted to an error event, but the chunks
+ * cannot be retracted. This is expected to be rare — auth errors appear
+ * immediately, not after 2KB of legitimate output.
+ */
+const PREFIX_BUFFER_BYTES = 2048;
+
 export class ClaudeAdapter implements AgentAdapter {
   id = "claude";
   private config: AdapterConfig;
@@ -21,9 +34,13 @@ export class ClaudeAdapter implements AgentAdapter {
     try {
       const prompt = buildPrompt(input);
 
-      // Buffer stdout chunks so auth/error text is never emitted as speech.
-      // If response_end detects an error, suppress the chunks and yield an error event instead.
-      const bufferedChunks: AgentEvent[] = [];
+      // Prefix-buffer strategy: hold the first PREFIX_BUFFER_BYTES of stdout
+      // to check for auth/error patterns before streaming to the consumer.
+      const pendingChunks: AgentEvent[] = [];
+      let prefixBytes = 0;
+      let prefixText = "";
+      let flushed = false;
+      let errorDetected = false;
 
       for await (const event of spawnCliAgent({
         command: this.config.command,
@@ -47,13 +64,44 @@ export class ClaudeAdapter implements AgentAdapter {
         stdin: prompt,
       })) {
         if (event.type === "chunk" && event.stream === "stdout") {
-          bufferedChunks.push(event);
+          if (errorDetected) {
+            // Error already found in prefix — suppress all subsequent chunks
+            continue;
+          }
+
+          if (!flushed) {
+            // Still in prefix-buffering phase
+            pendingChunks.push(event);
+            prefixBytes += Buffer.byteLength(event.content);
+            prefixText += event.content;
+
+            // Check prefix for errors on every chunk
+            const authError = detectClaudeError(prefixText);
+            if (authError) {
+              errorDetected = true;
+              continue;
+            }
+
+            // Once we've accumulated enough clean prefix, flush and stream
+            if (prefixBytes >= PREFIX_BUFFER_BYTES) {
+              for (const chunk of pendingChunks) yield chunk;
+              pendingChunks.length = 0;
+              flushed = true;
+            }
+          } else {
+            // Past prefix — pass through directly
+            yield event;
+          }
         } else if (event.type === "response_end") {
+          // Always check the full content for errors, even after flushing.
           const authError = detectClaudeError(event.content);
           if (authError) {
             yield { type: "error", error: authError, stderr: event.content, exitCode: 0 };
           } else {
-            for (const chunk of bufferedChunks) yield chunk;
+            // Flush any remaining buffered chunks (short response < PREFIX_BUFFER_BYTES)
+            if (!flushed) {
+              for (const chunk of pendingChunks) yield chunk;
+            }
             yield event;
           }
         } else {
