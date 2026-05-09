@@ -24,6 +24,7 @@ export const DEFAULT_CONFIG: RoundtableConfig = {
     maxRounds: 2,
     participantTimeoutMs: 120_000,
     deliberationTimeoutMs: 600_000,
+    maxTranscriptBytes: 131_072,
   },
   adapters: {
     claude: { command: "claude", mode: "read_only", limits: DEFAULT_ADAPTER_LIMITS },

@@ -8,6 +8,7 @@ describe("resolveConfig", () => {
     expect(config.context.budgetBytes).toBe(140_000);
     expect(config.context.maxFiles).toBe(75);
     expect(config.deliberation.maxRounds).toBe(2);
+    expect(config.deliberation.maxTranscriptBytes).toBe(131_072);
     expect(config.adapters.claude.command).toBe("claude");
     expect(config.adapters.codex.command).toBe("codex");
     expect(config.adapters.steward.command).toBe("claude");

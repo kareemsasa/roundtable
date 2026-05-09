@@ -127,6 +127,48 @@ describe("buildTranscript", () => {
     expect(allContent).not.toContain('"reason"');
   });
 
+  it("preserves recent steward summary when budget is enforced", () => {
+    const events = [
+      makeEvent("user_message", "user", { content: "A".repeat(200) }),
+      makeEvent("agent_response_end", "claude", {
+        content: "B".repeat(200),
+        durationMs: 0,
+        exitCode: 0,
+      }),
+      makeEvent("agent_response_end", "codex", {
+        content: "C".repeat(200),
+        durationMs: 0,
+        exitCode: 0,
+      }),
+      makeEvent("steward_decision", "steward", {
+        status: "continue",
+        reason: "Need more",
+        summary: "Round 1 summary",
+      }),
+      makeEvent("user_message", "user", { content: "D".repeat(200) }),
+      makeEvent("agent_response_end", "claude", {
+        content: "E".repeat(200),
+        durationMs: 0,
+        exitCode: 0,
+      }),
+    ];
+    // Budget fits ~3 messages (600 bytes) — should keep recent messages including steward
+    const transcript = buildTranscript(events, 600);
+
+    // Should have omission notice
+    const omission = transcript.find((t) => t.content.includes("omitted"));
+    expect(omission).toBeDefined();
+    expect(omission!.participant).toBe("roundtable");
+
+    // Most recent messages should be present
+    expect(transcript[transcript.length - 1].content).toBe("E".repeat(200));
+
+    // Steward summary should be included (it's short and recent)
+    const stewardMsg = transcript.find((t) => t.participant === "steward");
+    expect(stewardMsg).toBeDefined();
+    expect(stewardMsg!.content).toBe("Round 1 summary");
+  });
+
   it("returns all messages when budget is not specified", () => {
     const events = [
       makeEvent("user_message", "user", { content: "A".repeat(1000) }),
