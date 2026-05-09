@@ -67,6 +67,9 @@ const EXCLUDED_DIR_PREFIXES = [
   ".cache/",
   "__pycache__/",
   ".turbo/",
+  ".claude/",
+  ".worktrees/",
+  "coverage/",
 ];
 
 const EXCLUDED_LOCKFILES = new Set(["pnpm-lock.yaml", "package-lock.json", "yarn.lock"]);
@@ -100,6 +103,8 @@ const BINARY_EXTENSIONS = new Set([
   ".pdf",
 ]);
 
+const EXCLUDED_BUILD_EXTENSIONS = new Set([".tsbuildinfo"]);
+
 function getExtension(filePath: string): string {
   const basename = filePath.split("/").pop() ?? "";
   const dotIndex = basename.lastIndexOf(".");
@@ -116,6 +121,11 @@ function isBinaryExtension(filePath: string): boolean {
 }
 
 export function categorizeFile(relativePath: string): FileCategory {
+  // Fixture/test data files are always low-priority, regardless of basename
+  if (relativePath.includes("fixtures/") || relativePath.includes("__fixtures__/")) {
+    return "other";
+  }
+
   const basename = getBasename(relativePath);
 
   if (ROUNDTABLE_CONFIG_FILES.has(basename)) return "roundtable_config";
@@ -146,9 +156,9 @@ export function isHardDenied(relativePath: string): boolean {
 }
 
 export function isDefaultExcluded(relativePath: string): boolean {
-  // Check directory prefixes
+  // Check directory prefixes (both root-level and nested)
   for (const prefix of EXCLUDED_DIR_PREFIXES) {
-    if (relativePath.startsWith(prefix)) return true;
+    if (relativePath.startsWith(prefix) || relativePath.includes(`/${prefix}`)) return true;
   }
 
   // Check lockfiles
@@ -157,25 +167,65 @@ export function isDefaultExcluded(relativePath: string): boolean {
   // Check binary extensions
   if (isBinaryExtension(relativePath)) return true;
 
+  // Check build artifact extensions
+  if (EXCLUDED_BUILD_EXTENSIONS.has(getExtension(relativePath))) return true;
+
   return false;
 }
 
-function priorityOf(category: FileCategory): number {
+function isTestFile(relativePath: string): boolean {
+  if (relativePath.includes("__tests__/")) return true;
+  const basename = getBasename(relativePath);
+  return /\.(test|spec)\.[jt]sx?$/.test(basename);
+}
+
+function isRootMeta(relativePath: string): boolean {
+  // Root-level files have no directory separator
+  return !relativePath.includes("/");
+}
+
+function isFixturePath(relativePath: string): boolean {
+  return relativePath.includes("fixtures/") || relativePath.includes("__fixtures__/");
+}
+
+function isImplementationSource(relativePath: string): boolean {
+  // Files under a src/ directory are implementation source in TS/JS monorepos.
+  // Matches both "src/..." (single-package) and "packages/foo/src/..." (monorepo).
+  // Barrel/index files are excluded — they're typically just re-exports.
+  if (!relativePath.includes("src/")) return false;
+  const basename = getBasename(relativePath);
+  if (/^index\.[jt]sx?$/.test(basename)) return false;
+  return true;
+}
+
+function priorityOf(category: FileCategory, relativePath: string): number {
+  // Fixture/test data files always get lowest priority regardless of category
+  if (isFixturePath(relativePath)) return 11;
+
   switch (category) {
     case "roundtable_config":
       return 1;
     case "agent_config":
       return 2;
     case "project_meta":
-      return 3;
+      // Root metadata (README.md, package.json, etc.) ranks high;
+      // package-level metadata ranks below all production source
+      return isRootMeta(relativePath) ? 3 : 8;
     case "config":
       return 4;
     case "documentation":
+      // Historical specs/plans rank below production source
+      if (relativePath.startsWith("docs/superpowers/")) return 10;
       return 5;
     case "source":
-      return 6;
-    case "other":
+      // Test files rank below all production source
+      if (isTestFile(relativePath)) return 9;
+      // Implementation source (under src/, non-barrel) outranks peripheral
+      // source (root configs, barrel index files, non-src files)
+      if (isImplementationSource(relativePath)) return 6;
       return 7;
+    case "other":
+      return 11;
   }
 }
 
@@ -184,11 +234,14 @@ export function selectFiles(scanned: ScannedFile[], config: ContextConfig): Sele
   const omittedFiles: { path: string; reason: string }[] = [];
 
   // Categorize all files and sort by priority
-  const categorized = scanned.map((f) => ({
-    scanned: f,
-    category: categorizeFile(f.relativePath),
-    priority: priorityOf(categorizeFile(f.relativePath)),
-  }));
+  const categorized = scanned.map((f) => {
+    const category = categorizeFile(f.relativePath);
+    return {
+      scanned: f,
+      category,
+      priority: priorityOf(category, f.relativePath),
+    };
+  });
 
   categorized.sort((a, b) => a.priority - b.priority);
 
@@ -221,7 +274,7 @@ export function selectFiles(scanned: ScannedFile[], config: ContextConfig): Sele
 
     // Budget check: maxFiles
     if (selected.length >= config.maxFiles) {
-      omittedFiles.push({ path: file.relativePath, reason: "budget_exhausted" });
+      omittedFiles.push({ path: file.relativePath, reason: "max_files_exhausted" });
       continue;
     }
 

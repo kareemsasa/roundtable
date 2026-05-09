@@ -91,6 +91,29 @@ describe("categorizeFile", () => {
   it("categorizes lib/utils.js as source", () => {
     expect(categorizeFile("lib/utils.js")).toBe("source");
   });
+
+  it("categorizes fixtures/ files as other", () => {
+    expect(categorizeFile("src/__tests__/fixtures/sample/data.json")).toBe("other");
+  });
+
+  it("categorizes __fixtures__/ files as other", () => {
+    expect(categorizeFile("tests/__fixtures__/mock.json")).toBe("other");
+  });
+
+  it("categorizes fixture ROUNDTABLE.md as other, not roundtable_config", () => {
+    expect(categorizeFile("fixtures/sample-project/ROUNDTABLE.md")).toBe("other");
+    expect(
+      categorizeFile("packages/context/src/__tests__/fixtures/sample-project/ROUNDTABLE.md"),
+    ).toBe("other");
+  });
+
+  it("categorizes fixture package.json as other, not project_meta", () => {
+    expect(categorizeFile("fixtures/sample-project/package.json")).toBe("other");
+  });
+
+  it("still categorizes real ROUNDTABLE.md as roundtable_config", () => {
+    expect(categorizeFile("ROUNDTABLE.md")).toBe("roundtable_config");
+  });
 });
 
 describe("isHardDenied", () => {
@@ -192,6 +215,42 @@ describe("isDefaultExcluded", () => {
     expect(isDefaultExcluded("font.woff2")).toBe(true);
   });
 
+  it("excludes .claude/ worktree files at root", () => {
+    expect(isDefaultExcluded(".claude/worktrees/agent-a23fb415/CLAUDE.md")).toBe(true);
+  });
+
+  it("excludes .claude/ files nested in subdirectories", () => {
+    expect(isDefaultExcluded("some/path/.claude/settings.json")).toBe(true);
+  });
+
+  it("excludes .worktrees/ files at root", () => {
+    expect(isDefaultExcluded(".worktrees/feature-branch/src/index.ts")).toBe(true);
+  });
+
+  it("excludes .tsbuildinfo files at root", () => {
+    expect(isDefaultExcluded("tsconfig.tsbuildinfo")).toBe(true);
+  });
+
+  it("excludes .tsbuildinfo files in subdirectories", () => {
+    expect(isDefaultExcluded("packages/core/tsconfig.tsbuildinfo")).toBe(true);
+  });
+
+  it("excludes nested dist/ directories", () => {
+    expect(isDefaultExcluded("packages/core/dist/index.js")).toBe(true);
+  });
+
+  it("excludes nested build/ directories", () => {
+    expect(isDefaultExcluded("apps/cli/build/main.js")).toBe(true);
+  });
+
+  it("excludes nested .next/ directories", () => {
+    expect(isDefaultExcluded("apps/web/.next/server/page.js")).toBe(true);
+  });
+
+  it("excludes nested coverage/ directories", () => {
+    expect(isDefaultExcluded("packages/core/coverage/lcov.info")).toBe(true);
+  });
+
   it("does not exclude src/index.ts", () => {
     expect(isDefaultExcluded("src/index.ts")).toBe(false);
   });
@@ -226,8 +285,8 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, defaultConfig);
     const paths = result.selected.map((f) => f.path);
 
-    // ROUNDTABLE.md first (priority 1), README.md next (priority 3),
-    // docs/guide.md (priority 5), src/index.ts (priority 6)
+    // ROUNDTABLE.md (priority 1), README.md (priority 3),
+    // docs/guide.md (priority 5), src/index.ts (priority 7 — peripheral barrel)
     expect(paths[0]).toBe("ROUNDTABLE.md");
     expect(paths[1]).toBe("README.md");
     expect(paths[2]).toBe("docs/guide.md");
@@ -294,7 +353,7 @@ describe("selectFiles", () => {
     expect(omittedReasons).toContain("src/a.ts");
   });
 
-  it("respects maxFiles", () => {
+  it("respects maxFiles with max_files_exhausted reason", () => {
     const scanned: ScannedFile[] = [
       makeFile("ROUNDTABLE.md", 10),
       makeFile("README.md", 10),
@@ -311,6 +370,9 @@ describe("selectFiles", () => {
     expect(result.selected).toHaveLength(2);
     expect(result.selected[0]!.path).toBe("ROUNDTABLE.md");
     expect(result.selected[1]!.path).toBe("README.md");
+
+    const omittedA = result.omitted.files.find((f) => f.path === "src/a.ts");
+    expect(omittedA!.reason).toBe("max_files_exhausted");
   });
 
   it("excludes default-excluded files", () => {
@@ -348,5 +410,462 @@ describe("selectFiles", () => {
     expect(byPath["docs/guide.md"]!.category).toBe("documentation");
     expect(byPath["src/index.ts"]!.category).toBe("source");
     expect(byPath["docker-compose.yml"]!.category).toBe("config");
+  });
+
+  it("excludes .claude/worktrees files from selection", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("src/index.ts", 100),
+      makeFile(".claude/worktrees/agent-a23fb415/CLAUDE.md", 200),
+      makeFile(".claude/worktrees/agent-a23fb415/package.json", 300),
+      makeFile(".claude/worktrees/agent-afe37e78/README.md", 150),
+    ];
+
+    const result = selectFiles(scanned, defaultConfig);
+    expect(result.selected).toHaveLength(1);
+    expect(result.selected[0]!.path).toBe("src/index.ts");
+
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain(".claude/worktrees/agent-a23fb415/CLAUDE.md");
+    expect(omittedPaths).toContain(".claude/worktrees/agent-a23fb415/package.json");
+    expect(omittedPaths).toContain(".claude/worktrees/agent-afe37e78/README.md");
+  });
+
+  it("excludes .tsbuildinfo files from selection", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("src/index.ts", 100),
+      makeFile("tsconfig.tsbuildinfo", 5000),
+      makeFile("packages/core/tsconfig.tsbuildinfo", 3000),
+    ];
+
+    const result = selectFiles(scanned, defaultConfig);
+    expect(result.selected).toHaveLength(1);
+    expect(result.selected[0]!.path).toBe("src/index.ts");
+  });
+
+  it("includes source files before fixture and worktree metadata under budget pressure", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("packages/core/src/engine.ts", 800),
+      makeFile("packages/adapters/src/claude.ts", 600),
+      makeFile("src/__tests__/fixtures/sample/data.json", 500),
+      makeFile(".claude/worktrees/agent-abc/package.json", 300),
+      makeFile("packages/core/src/turn-loop.ts", 700),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      budgetBytes: 2500,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // Source files should be included
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
+    expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
+
+    // Worktree files should be excluded entirely
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain(".claude/worktrees/agent-abc/package.json");
+  });
+
+  it("ranks fixture files below primary source files", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("src/__tests__/fixtures/sample/data.json", 100),
+      makeFile("packages/core/src/engine.ts", 100),
+    ];
+
+    const result = selectFiles(scanned, defaultConfig);
+    const paths = result.selected.map((f) => f.path);
+
+    // Implementation source (priority 6) before fixtures (priority 11)
+    expect(paths[0]).toBe("packages/core/src/engine.ts");
+    expect(paths[1]).toBe("src/__tests__/fixtures/sample/data.json");
+  });
+
+  it("selects production source before docs/superpowers under budget pressure", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("docs/superpowers/specs/2026-05-06-design.md", 38000),
+      makeFile("packages/core/src/engine.ts", 5000),
+      makeFile("packages/core/src/turn-loop.ts", 4000),
+      makeFile("packages/adapters/src/claude.ts", 6000),
+      makeFile("packages/adapters/src/codex.ts", 5000),
+      makeFile("packages/context/src/build-context-pack.ts", 4000),
+      makeFile("packages/context/src/file-selection.ts", 5000),
+      makeFile("apps/cli/src/render.ts", 3000),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      budgetBytes: 40000,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // All production source files should be included
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/codex.ts");
+    expect(selectedPaths).toContain("packages/context/src/build-context-pack.ts");
+    expect(selectedPaths).toContain("packages/context/src/file-selection.ts");
+    expect(selectedPaths).toContain("apps/cli/src/render.ts");
+
+    // Historical spec should be omitted due to budget
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain("docs/superpowers/specs/2026-05-06-design.md");
+  });
+
+  it("selects production source before test files under budget pressure", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("packages/core/src/__tests__/engine.test.ts", 3000),
+      makeFile("packages/core/src/engine.ts", 5000),
+      makeFile("packages/adapters/src/claude.ts", 4000),
+      makeFile("packages/adapters/src/__tests__/claude.test.ts", 6000),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      budgetBytes: 10000,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // Production source (priority 6) selected before tests (priority 7)
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
+
+    // Tests should be omitted due to budget
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain("packages/core/src/__tests__/engine.test.ts");
+    expect(omittedPaths).toContain("packages/adapters/src/__tests__/claude.test.ts");
+  });
+
+  it("ranks core source before historical docs and tests", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("docs/superpowers/specs/design.md", 100),
+      makeFile("packages/core/src/__tests__/engine.test.ts", 100),
+      makeFile("packages/core/src/engine.ts", 100),
+      makeFile("packages/adapters/src/claude.ts", 100),
+      makeFile("docs/guide.md", 100),
+    ];
+
+    const result = selectFiles(scanned, defaultConfig);
+    const paths = result.selected.map((f) => f.path);
+
+    // docs/guide.md (5) → impl source (6) → tests (9) → docs/superpowers (10)
+    expect(paths.indexOf("docs/guide.md")).toBeLessThan(
+      paths.indexOf("packages/core/src/engine.ts"),
+    );
+    expect(paths.indexOf("packages/core/src/engine.ts")).toBeLessThan(
+      paths.indexOf("packages/core/src/__tests__/engine.test.ts"),
+    );
+    expect(paths.indexOf("packages/core/src/__tests__/engine.test.ts")).toBeLessThan(
+      paths.indexOf("docs/superpowers/specs/design.md"),
+    );
+  });
+
+  it("ranks .spec.ts files as test priority", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("src/utils.spec.ts", 100),
+      makeFile("src/utils.ts", 100),
+    ];
+
+    const result = selectFiles(scanned, defaultConfig);
+    const paths = result.selected.map((f) => f.path);
+
+    expect(paths[0]).toBe("src/utils.ts");
+    expect(paths[1]).toBe("src/utils.spec.ts");
+  });
+
+  it("selects core source before package-level metadata under file-count pressure", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("README.md", 100),
+      makeFile("package.json", 100),
+      makeFile("packages/core/package.json", 100),
+      makeFile("packages/core/tsconfig.json", 100),
+      makeFile("packages/adapters/package.json", 100),
+      makeFile("packages/adapters/tsconfig.json", 100),
+      makeFile("packages/core/src/engine.ts", 100),
+      makeFile("packages/core/src/turn-loop.ts", 100),
+      makeFile("packages/adapters/src/claude.ts", 100),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      maxFiles: 5,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // Root meta (priority 3) and impl source (priority 6) should beat
+    // package-level meta (priority 8)
+    expect(selectedPaths).toContain("README.md");
+    expect(selectedPaths).toContain("package.json");
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
+
+    // Package-level metadata should be omitted
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain("packages/core/package.json");
+    expect(omittedPaths).toContain("packages/core/tsconfig.json");
+  });
+
+  it("fixture metadata does not consume file slots before primary source", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("fixtures/sample-project/package.json", 100),
+      makeFile("fixtures/sample-project/README.md", 100),
+      makeFile("packages/core/src/engine.ts", 100),
+      makeFile("packages/adapters/src/claude.ts", 100),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      maxFiles: 2,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // Impl source (priority 6) before fixture files (priority 11)
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
+  });
+
+  it("includes essential Roundtable implementation files in representative monorepo", () => {
+    // Simulate the actual roundtable monorepo file layout
+    const scanned: ScannedFile[] = [
+      // Root meta (priority 3)
+      makeFile("ROUNDTABLE.md", 160),
+      makeFile("CLAUDE.md", 1340),
+      makeFile("README.md", 8626),
+      makeFile("package.json", 687),
+      makeFile("pnpm-workspace.yaml", 40),
+      makeFile("tsconfig.json", 249),
+      // Config
+      makeFile(".github/workflows/ci.yml", 517),
+      // Implementation source (priority 6) — the critical files
+      makeFile("apps/cli/src/commands/convene.ts", 10936),
+      makeFile("apps/cli/src/render.ts", 3304),
+      makeFile("apps/cli/src/interactive.ts", 4297),
+      makeFile("packages/core/src/engine.ts", 3500),
+      makeFile("packages/core/src/turn-loop.ts", 2800),
+      makeFile("packages/core/src/types.ts", 5000),
+      makeFile("packages/adapters/src/claude.ts", 3456),
+      makeFile("packages/adapters/src/codex.ts", 3382),
+      makeFile("packages/adapters/src/cli-agent.ts", 7053),
+      makeFile("packages/context/src/build-context-pack.ts", 5164),
+      makeFile("packages/context/src/file-selection.ts", 7329),
+      makeFile("packages/persistence/src/session-store.ts", 3500),
+      // Peripheral source (priority 7) — barrels and root configs
+      makeFile("apps/cli/src/index.ts", 606),
+      makeFile("packages/core/src/index.ts", 314),
+      makeFile("eslint.config.js", 272),
+      makeFile("vitest.config.ts", 138),
+      // Package-level meta (priority 8)
+      makeFile("packages/core/package.json", 468),
+      makeFile("packages/core/tsconfig.json", 169),
+      makeFile("packages/adapters/package.json", 437),
+      makeFile("packages/adapters/tsconfig.json", 234),
+      makeFile("packages/context/package.json", 376),
+      makeFile("packages/context/tsconfig.json", 219),
+      makeFile("packages/persistence/package.json", 352),
+      makeFile("packages/persistence/tsconfig.json", 178),
+      makeFile("apps/cli/package.json", 522),
+      makeFile("apps/cli/tsconfig.json", 402),
+      // Tests (priority 9)
+      makeFile("packages/core/src/__tests__/engine.test.ts", 3500),
+      makeFile("packages/adapters/src/__tests__/claude.test.ts", 6000),
+      // Historical docs (priority 10)
+      makeFile("docs/superpowers/specs/2026-05-06-design.md", 38292),
+      // Fixtures (priority 11)
+      makeFile("fixtures/sample-project/README.md", 752),
+      makeFile("fixtures/sample-project/package.json", 116),
+    ];
+
+    const config: ContextConfig = {
+      budgetBytes: 100_000,
+      maxFiles: 50,
+      maxFileBytes: 10_000,
+      maxTreeDepth: 5,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // All essential implementation files must be included
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
+    expect(selectedPaths).toContain("packages/core/src/types.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/codex.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/cli-agent.ts");
+    expect(selectedPaths).toContain("packages/context/src/build-context-pack.ts");
+    expect(selectedPaths).toContain("packages/context/src/file-selection.ts");
+    expect(selectedPaths).toContain("packages/persistence/src/session-store.ts");
+    expect(selectedPaths).toContain("apps/cli/src/commands/convene.ts");
+    expect(selectedPaths).toContain("apps/cli/src/render.ts");
+    expect(selectedPaths).toContain("apps/cli/src/interactive.ts");
+
+    // Implementation source should appear before package-level metadata
+    const engineIdx = selectedPaths.indexOf("packages/core/src/engine.ts");
+    const pkgJsonIdx = selectedPaths.indexOf("packages/core/package.json");
+    expect(engineIdx).toBeLessThan(pkgJsonIdx);
+  });
+
+  it("implementation source outranks barrel index files and root configs", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("packages/core/src/index.ts", 300),
+      makeFile("eslint.config.js", 200),
+      makeFile(".prettierrc", 100),
+      makeFile("vitest.config.ts", 150),
+      makeFile("packages/core/src/engine.ts", 5000),
+      makeFile("packages/core/src/turn-loop.ts", 4000),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      // Budget fits impl source (5000+4000=9000) but not peripherals
+      budgetBytes: 9000,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // Implementation files (priority 6) included first
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
+
+    // Peripheral source (index barrel, root configs) omitted due to budget
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain("packages/core/src/index.ts");
+    expect(omittedPaths).toContain("eslint.config.js");
+  });
+
+  it("implementation source outranks package metadata under budget pressure", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("packages/core/src/types.ts", 5000),
+      makeFile("packages/core/src/turn-loop.ts", 4000),
+      makeFile("packages/persistence/src/session-store.ts", 3000),
+      makeFile("packages/persistence/src/paths.ts", 1500),
+      makeFile("packages/core/package.json", 400),
+      makeFile("packages/core/tsconfig.json", 200),
+      makeFile("packages/persistence/package.json", 350),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      // Budget fits impl source (5000+4000+3000+1500=13500) but not pkg meta
+      budgetBytes: 13500,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // All implementation source included
+    expect(selectedPaths).toContain("packages/core/src/types.ts");
+    expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
+    expect(selectedPaths).toContain("packages/persistence/src/session-store.ts");
+    expect(selectedPaths).toContain("packages/persistence/src/paths.ts");
+
+    // Package metadata omitted — all three exceed remaining budget
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain("packages/core/package.json");
+    expect(omittedPaths).toContain("packages/persistence/package.json");
+  });
+
+  it("works generically for any monorepo with src/ convention", () => {
+    // Non-roundtable monorepo layout
+    const scanned: ScannedFile[] = [
+      makeFile("README.md", 500),
+      makeFile("packages/api/src/router.ts", 3000),
+      makeFile("packages/api/src/handlers.ts", 4000),
+      makeFile("packages/api/src/index.ts", 200),
+      makeFile("packages/db/src/schema.ts", 2000),
+      makeFile("packages/db/src/migrations.ts", 3000),
+      makeFile("packages/db/src/index.ts", 150),
+      makeFile("packages/db/package.json", 300),
+      makeFile("packages/api/package.json", 300),
+      makeFile(".prettierrc", 100),
+      makeFile("packages/api/src/__tests__/router.test.ts", 2000),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      budgetBytes: 14000,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // Implementation source outranks peripheral and metadata
+    expect(selectedPaths).toContain("packages/api/src/router.ts");
+    expect(selectedPaths).toContain("packages/api/src/handlers.ts");
+    expect(selectedPaths).toContain("packages/db/src/schema.ts");
+    expect(selectedPaths).toContain("packages/db/src/migrations.ts");
+
+    // Barrel indexes and root configs are lower priority
+    const routerIdx = selectedPaths.indexOf("packages/api/src/router.ts");
+    const barrelIdx = selectedPaths.indexOf("packages/api/src/index.ts");
+    if (barrelIdx >= 0) {
+      expect(routerIdx).toBeLessThan(barrelIdx);
+    }
+  });
+
+  it("omitted reason distinguishes max_files_exhausted from budget_exhausted", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("packages/a/src/foo.ts", 10),
+      makeFile("packages/b/src/bar.ts", 10),
+      makeFile("packages/c/src/baz.ts", 10),
+      makeFile("packages/d/src/big.ts", 50000),
+    ];
+
+    // maxFiles will be hit before budgetBytes
+    const configFiles: ContextConfig = {
+      ...defaultConfig,
+      maxFiles: 2,
+      budgetBytes: 100_000,
+    };
+    const resultFiles = selectFiles(scanned, configFiles);
+    const filesOmitted = resultFiles.omitted.files.find((f) => f.path === "packages/c/src/baz.ts");
+    expect(filesOmitted!.reason).toBe("max_files_exhausted");
+
+    // budgetBytes will be hit before maxFiles
+    const configBytes: ContextConfig = {
+      ...defaultConfig,
+      maxFiles: 100,
+      budgetBytes: 25,
+    };
+    const resultBytes = selectFiles(scanned, configBytes);
+    const bytesOmitted = resultBytes.omitted.files.find((f) => f.path === "packages/d/src/big.ts");
+    expect(bytesOmitted!.reason).toBe("budget_exhausted");
+  });
+
+  it("fixture ROUNDTABLE.md does not outrank implementation source", () => {
+    const scanned: ScannedFile[] = [
+      makeFile("fixtures/sample-project/ROUNDTABLE.md", 160),
+      makeFile("packages/core/src/engine.ts", 5000),
+      makeFile("packages/core/src/turn-loop.ts", 4000),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      maxFiles: 2,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // Implementation source (priority 6) selected before fixture (priority 11)
+    expect(selectedPaths[0]).toBe("packages/core/src/engine.ts");
+    expect(selectedPaths[1]).toBe("packages/core/src/turn-loop.ts");
+
+    // Fixture ROUNDTABLE.md omitted
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain("fixtures/sample-project/ROUNDTABLE.md");
   });
 });

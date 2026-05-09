@@ -5,8 +5,8 @@ describe("resolveConfig", () => {
   it("returns defaults when no overrides provided", () => {
     const config = resolveConfig({});
     expect(config.dataDir).toContain("roundtable");
-    expect(config.context.budgetBytes).toBe(100_000);
-    expect(config.context.maxFiles).toBe(50);
+    expect(config.context.budgetBytes).toBe(128_000);
+    expect(config.context.maxFiles).toBe(75);
     expect(config.deliberation.maxRounds).toBe(2);
     expect(config.adapters.claude.command).toBe("claude");
     expect(config.adapters.codex.command).toBe("codex");

@@ -82,6 +82,8 @@ async function buildDirectoryTree(
     ".cache",
     "__pycache__",
     ".turbo",
+    ".claude",
+    ".worktrees",
   ]);
 
   try {
