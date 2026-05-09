@@ -286,7 +286,7 @@ describe("selectFiles", () => {
     const paths = result.selected.map((f) => f.path);
 
     // ROUNDTABLE.md (priority 1), README.md (priority 3),
-    // docs/guide.md (priority 5), src/index.ts (priority 7 — peripheral barrel)
+    // docs/guide.md (priority 6), src/index.ts (priority 7 — peripheral barrel)
     expect(paths[0]).toBe("ROUNDTABLE.md");
     expect(paths[1]).toBe("README.md");
     expect(paths[2]).toBe("docs/guide.md");
@@ -478,7 +478,7 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, defaultConfig);
     const paths = result.selected.map((f) => f.path);
 
-    // Implementation source (priority 6) before fixtures (priority 11)
+    // Implementation source (priority 5) before fixtures (priority 11)
     expect(paths[0]).toBe("packages/core/src/engine.ts");
     expect(paths[1]).toBe("src/__tests__/fixtures/sample/data.json");
   });
@@ -517,6 +517,55 @@ describe("selectFiles", () => {
     expect(omittedPaths).toContain("docs/superpowers/specs/2026-05-06-design.md");
   });
 
+  it("docs/ files do not push core implementation files out of default budget", () => {
+    // Regression: docs/naming-analysis.md (17818 bytes) was included at priority 5,
+    // consuming budget before implementation source (priority 6), causing
+    // turn-loop.ts, types.ts, session-store.ts, paths.ts to be budget_exhausted.
+    const scanned: ScannedFile[] = [
+      // Large decision/history doc
+      makeFile("docs/naming-analysis.md", 17818),
+      makeFile("docs/architecture.md", 8000),
+      // Core implementation files that must survive budget pressure
+      makeFile("packages/core/src/turn-loop.ts", 2800),
+      makeFile("packages/core/src/types.ts", 5000),
+      makeFile("packages/persistence/src/session-store.ts", 3500),
+      makeFile("packages/persistence/src/paths.ts", 1500),
+      // Other implementation files
+      makeFile("packages/core/src/engine.ts", 3500),
+      makeFile("packages/adapters/src/claude.ts", 3456),
+      makeFile("packages/adapters/src/codex.ts", 3382),
+    ];
+
+    const config: ContextConfig = {
+      ...defaultConfig,
+      // Budget large enough for all impl source but not impl + all docs
+      budgetBytes: 30000,
+    };
+
+    const result = selectFiles(scanned, config);
+    const selectedPaths = result.selected.map((f) => f.path);
+
+    // All core implementation files must be included
+    expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
+    expect(selectedPaths).toContain("packages/core/src/types.ts");
+    expect(selectedPaths).toContain("packages/persistence/src/session-store.ts");
+    expect(selectedPaths).toContain("packages/persistence/src/paths.ts");
+    expect(selectedPaths).toContain("packages/core/src/engine.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
+    expect(selectedPaths).toContain("packages/adapters/src/codex.ts");
+
+    // Impl source (priority 5) should appear before docs (priority 6)
+    const turnLoopIdx = selectedPaths.indexOf("packages/core/src/turn-loop.ts");
+    const docsIdx = selectedPaths.indexOf("docs/naming-analysis.md");
+    if (docsIdx >= 0) {
+      expect(turnLoopIdx).toBeLessThan(docsIdx);
+    }
+
+    // The large doc should be pushed out or at least ranked after all impl source
+    const omittedPaths = result.omitted.files.map((f) => f.path);
+    expect(omittedPaths).toContain("docs/naming-analysis.md");
+  });
+
   it("selects production source before test files under budget pressure", () => {
     const scanned: ScannedFile[] = [
       makeFile("packages/core/src/__tests__/engine.test.ts", 3000),
@@ -533,7 +582,7 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, config);
     const selectedPaths = result.selected.map((f) => f.path);
 
-    // Production source (priority 6) selected before tests (priority 7)
+    // Production source (priority 5) selected before tests (priority 9)
     expect(selectedPaths).toContain("packages/core/src/engine.ts");
     expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
 
@@ -555,11 +604,11 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, defaultConfig);
     const paths = result.selected.map((f) => f.path);
 
-    // docs/guide.md (5) → impl source (6) → tests (9) → docs/superpowers (10)
-    expect(paths.indexOf("docs/guide.md")).toBeLessThan(
-      paths.indexOf("packages/core/src/engine.ts"),
-    );
+    // impl source (5) → docs/guide.md (6) → tests (9) → docs/superpowers (10)
     expect(paths.indexOf("packages/core/src/engine.ts")).toBeLessThan(
+      paths.indexOf("docs/guide.md"),
+    );
+    expect(paths.indexOf("docs/guide.md")).toBeLessThan(
       paths.indexOf("packages/core/src/__tests__/engine.test.ts"),
     );
     expect(paths.indexOf("packages/core/src/__tests__/engine.test.ts")).toBeLessThan(
@@ -631,7 +680,7 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, config);
     const selectedPaths = result.selected.map((f) => f.path);
 
-    // Impl source (priority 6) before fixture files (priority 11)
+    // Impl source (priority 5) before fixture files (priority 11)
     expect(selectedPaths).toContain("packages/core/src/engine.ts");
     expect(selectedPaths).toContain("packages/adapters/src/claude.ts");
   });
@@ -736,7 +785,7 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, config);
     const selectedPaths = result.selected.map((f) => f.path);
 
-    // Implementation files (priority 6) included first
+    // Implementation files (priority 5) included first
     expect(selectedPaths).toContain("packages/core/src/engine.ts");
     expect(selectedPaths).toContain("packages/core/src/turn-loop.ts");
 
@@ -860,7 +909,7 @@ describe("selectFiles", () => {
     const result = selectFiles(scanned, config);
     const selectedPaths = result.selected.map((f) => f.path);
 
-    // Implementation source (priority 6) selected before fixture (priority 11)
+    // Implementation source (priority 5) selected before fixture (priority 11)
     expect(selectedPaths[0]).toBe("packages/core/src/engine.ts");
     expect(selectedPaths[1]).toBe("packages/core/src/turn-loop.ts");
 

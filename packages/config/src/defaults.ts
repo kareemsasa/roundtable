@@ -15,7 +15,7 @@ export function getDefaultDataDir(): string {
 export const DEFAULT_CONFIG: RoundtableConfig = {
   dataDir: getDefaultDataDir(),
   context: {
-    budgetBytes: 128_000,
+    budgetBytes: 140_000,
     maxFiles: 75,
     maxFileBytes: 10_000,
     maxTreeDepth: 5,

@@ -216,13 +216,14 @@ function priorityOf(category: FileCategory, relativePath: string): number {
     case "documentation":
       // Historical specs/plans rank below production source
       if (relativePath.startsWith("docs/superpowers/")) return 10;
-      return 5;
+      // General docs rank below implementation source but above peripheral source
+      return 6;
     case "source":
       // Test files rank below all production source
       if (isTestFile(relativePath)) return 9;
-      // Implementation source (under src/, non-barrel) outranks peripheral
-      // source (root configs, barrel index files, non-src files)
-      if (isImplementationSource(relativePath)) return 6;
+      // Implementation source (under src/, non-barrel) outranks docs and
+      // peripheral source (root configs, barrel index files, non-src files)
+      if (isImplementationSource(relativePath)) return 5;
       return 7;
     case "other":
       return 11;
