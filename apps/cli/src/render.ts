@@ -56,9 +56,14 @@ export function renderEvent(event: SessionEvent, options: RenderOptions): void {
       if (!options.stream) {
         const content = event.data.content as string;
         process.stdout.write(`\n${label(event.participant)}: ${content}\n`);
-      } else {
-        // End the streaming line
+      } else if (event.participant === lastParticipant) {
+        // Chunks were streamed for this participant — end the streaming line
         process.stdout.write("\n");
+      } else {
+        // No chunks were streamed (e.g., Codex suppresses JSONL chunks).
+        // Display the full response as in non-streaming mode.
+        const content = event.data.content as string;
+        process.stdout.write(`\n${label(event.participant)}: ${content}\n`);
       }
       lastParticipant = event.participant;
       break;

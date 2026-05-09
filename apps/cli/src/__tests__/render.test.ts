@@ -81,6 +81,30 @@ describe("renderEvent", () => {
     expect(rendered()).not.toContain('"status"');
   });
 
+  it("streaming: response_end displays full content when no chunks were streamed", () => {
+    // Codex suppresses JSONL chunks — response_end should fall back to full display
+    const claudeChunk = makeEvent("agent_chunk", "claude", {
+      content: "Hello from Claude",
+      stream: "stdout",
+    });
+    const claudeEnd = makeEvent("agent_response_end", "claude", {
+      content: "Hello from Claude",
+    });
+    const codexEnd = makeEvent("agent_response_end", "codex", {
+      content: "Hello from Codex",
+    });
+
+    renderEvent(claudeChunk, streamOpts);
+    renderEvent(claudeEnd, streamOpts);
+    renderEvent(codexEnd, streamOpts);
+
+    const output = rendered();
+    // Claude streamed chunks → response_end just adds newline
+    expect(output).toContain("Claude: Hello from Claude");
+    // Codex had no chunks → response_end renders full content with header
+    expect(output).toContain("Codex: Hello from Codex");
+  });
+
   it("shows steward exactly once for a full steward event sequence", () => {
     const events: SessionEvent[] = [
       makeEvent("agent_chunk", "steward", { content: '{"status":', stream: "stdout" }),

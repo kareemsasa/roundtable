@@ -178,10 +178,12 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
 
   // End the queue when the process closes.
   // Node guarantees all stdio data events fire before close.
-  let exitCode: number | null = null;
+  // Using an object property so TypeScript doesn't narrow to null
+  // (the assignment happens in a callback invisible to flow analysis).
+  const proc = { exitCode: null as number | null };
 
   child.on("close", (code) => {
-    exitCode = code;
+    proc.exitCode = code;
     queue.end();
   });
 
@@ -221,12 +223,12 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
     yield {
       type: "error",
       error: spawnError.message,
-      exitCode: exitCode ?? 1,
+      exitCode: proc.exitCode ?? 1,
     };
     return;
   }
 
-  const code = exitCode ?? 1;
+  const code = proc.exitCode ?? 1;
 
   if (code === 0) {
     yield {
