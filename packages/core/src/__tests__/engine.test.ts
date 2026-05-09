@@ -327,8 +327,8 @@ describe("RoundtableEngine", () => {
       }
 
       // All agent events should have invocationId in data
-      const agentEvents = events.filter((e) =>
-        e.type.startsWith("agent_") || e.type === "output_truncated",
+      const agentEvents = events.filter(
+        (e) => e.type.startsWith("agent_") || e.type === "output_truncated",
       );
       for (const event of agentEvents) {
         expect(event.data.invocationId).toBeDefined();

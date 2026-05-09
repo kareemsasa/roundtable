@@ -226,17 +226,26 @@ export class RoundtableEngine {
             durationMs: event.data.durationMs,
           });
           await this.store.saveArtifact(
-            meta.id, p.participant, invocationId,
-            "meta.json", JSON.stringify(p.artifactMeta, null, 2),
+            meta.id,
+            p.participant,
+            invocationId,
+            "meta.json",
+            JSON.stringify(p.artifactMeta, null, 2),
           );
           await this.store.saveArtifact(
-            meta.id, p.participant, invocationId,
-            "stdout.log", (event.data.content as string) ?? "",
+            meta.id,
+            p.participant,
+            invocationId,
+            "stdout.log",
+            (event.data.content as string) ?? "",
           );
           if (event.data.stderr) {
             await this.store.saveArtifact(
-              meta.id, p.participant, invocationId,
-              "stderr.log", event.data.stderr as string,
+              meta.id,
+              p.participant,
+              invocationId,
+              "stderr.log",
+              event.data.stderr as string,
             );
           }
           pending.delete(invocationId);
@@ -255,19 +264,28 @@ export class RoundtableEngine {
           error: event.data.error,
         });
         await this.store.saveArtifact(
-          meta.id, p.participant, invocationId,
-          "meta.json", JSON.stringify(p.artifactMeta, null, 2),
+          meta.id,
+          p.participant,
+          invocationId,
+          "meta.json",
+          JSON.stringify(p.artifactMeta, null, 2),
         );
         if (event.data.stdout) {
           await this.store.saveArtifact(
-            meta.id, p.participant, invocationId,
-            "stdout.log", event.data.stdout as string,
+            meta.id,
+            p.participant,
+            invocationId,
+            "stdout.log",
+            event.data.stdout as string,
           );
         }
         if (event.data.stderr) {
           await this.store.saveArtifact(
-            meta.id, p.participant, invocationId,
-            "stderr.log", event.data.stderr as string,
+            meta.id,
+            p.participant,
+            invocationId,
+            "stderr.log",
+            event.data.stderr as string,
           );
         }
         pending.delete(invocationId);
@@ -281,8 +299,11 @@ export class RoundtableEngine {
             durationMs: event.data.durationMs,
           });
           await this.store.saveArtifact(
-            meta.id, p.participant, invocationId,
-            "meta.json", JSON.stringify(p.artifactMeta, null, 2),
+            meta.id,
+            p.participant,
+            invocationId,
+            "meta.json",
+            JSON.stringify(p.artifactMeta, null, 2),
           );
           pending.delete(invocationId);
         }
