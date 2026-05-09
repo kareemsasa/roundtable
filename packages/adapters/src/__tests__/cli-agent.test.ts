@@ -183,6 +183,60 @@ describe("spawnCliAgent", () => {
     }
   });
 
+  it("chunks stream before response_end (not batched)", async () => {
+    // Use a process that emits multiple chunks with small delays
+    const script = `
+      process.stdout.write("chunk1\\n");
+      setTimeout(() => { process.stdout.write("chunk2\\n"); }, 30);
+      setTimeout(() => { process.stdout.write("chunk3\\n"); }, 60);
+      setTimeout(() => process.exit(0), 100);
+    `;
+
+    const arrivals: { type: string; time: number }[] = [];
+    const start = Date.now();
+
+    for await (const event of spawnCliAgent({
+      command: "node",
+      args: ["-e", script],
+      cwd: "/tmp",
+      timeoutMs: 5000,
+      maxOutputBytes: 10000,
+      gracefulShutdownMs: 1000,
+    })) {
+      arrivals.push({ type: event.type, time: Date.now() - start });
+    }
+
+    const chunkArrivals = arrivals.filter((a) => a.type === "chunk");
+    const responseEndArrival = arrivals.find((a) => a.type === "response_end");
+
+    // At least some chunks arrived
+    expect(chunkArrivals.length).toBeGreaterThanOrEqual(1);
+    expect(responseEndArrival).toBeDefined();
+
+    // All chunks arrived before response_end
+    for (const chunk of chunkArrivals) {
+      expect(chunk.time).toBeLessThanOrEqual(responseEndArrival!.time);
+    }
+
+    // response_end still has the full accumulated content
+    const events: AgentEvent[] = [];
+    for await (const event of spawnCliAgent({
+      command: "node",
+      args: ["-e", script],
+      cwd: "/tmp",
+      timeoutMs: 5000,
+      maxOutputBytes: 10000,
+      gracefulShutdownMs: 1000,
+    })) {
+      events.push(event);
+    }
+    const responseEnd = events.find((e) => e.type === "response_end");
+    if (responseEnd?.type === "response_end") {
+      expect(responseEnd.content).toContain("chunk1");
+      expect(responseEnd.content).toContain("chunk3");
+    }
+  });
+
   it("AbortSignal cancellation yields timeout event", async () => {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 100);

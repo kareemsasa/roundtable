@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import type { AgentEvent } from "@roundtable/core";
+import { AsyncQueue } from "./async-queue.js";
 
 export type SpawnOptions = {
   command: string;
@@ -55,7 +56,8 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
     child.stdin.end();
   }
 
-  // Collect stdout/stderr and track byte counts
+  // Accumulate full content for the final event (response_end/error).
+  // Chunks are streamed via the queue; these accumulators build the complete output.
   let stdoutContent = "";
   let stderrContent = "";
   let stdoutBytes = 0;
@@ -63,9 +65,12 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
   let stdoutTruncated = false;
   let stderrTruncated = false;
 
-  const collectedEvents: AgentEvent[] = [];
   let killedByTimeout = false;
   let killedByAbort = false;
+
+  // AsyncQueue bridges push-based data events to pull-based async iteration.
+  // Chunks and truncation events are pushed here and yielded immediately.
+  const queue = new AsyncQueue<AgentEvent>();
 
   child.stdout!.on("data", (data: Buffer) => {
     const chunk = data.toString();
@@ -79,14 +84,14 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
         const keptFromChunk = chunk.slice(0, chunk.length - overage);
         stdoutContent += keptFromChunk;
         stdoutTruncated = true;
-        collectedEvents.push({
+        queue.push({
           type: "output_truncated",
           stream: "stdout",
           originalBytes: stdoutBytes,
           keptBytes: maxOutputBytes,
         });
         if (keptFromChunk.length > 0) {
-          collectedEvents.push({
+          queue.push({
             type: "chunk",
             content: keptFromChunk,
             stream: "stdout",
@@ -94,21 +99,14 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
         }
       } else {
         stdoutContent += chunk;
-        collectedEvents.push({
+        queue.push({
           type: "chunk",
           content: chunk,
           stream: "stdout",
         });
       }
-    } else {
-      // Already truncated, just track total bytes — update the truncated event's originalBytes
-      const lastTruncated = collectedEvents.find(
-        (e) => e.type === "output_truncated" && e.stream === "stdout",
-      );
-      if (lastTruncated && lastTruncated.type === "output_truncated") {
-        lastTruncated.originalBytes = stdoutBytes;
-      }
     }
+    // After truncation, just accumulate bytes (content already capped)
   });
 
   child.stderr!.on("data", (data: Buffer) => {
@@ -122,14 +120,14 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
         const keptFromChunk = chunk.slice(0, chunk.length - overage);
         stderrContent += keptFromChunk;
         stderrTruncated = true;
-        collectedEvents.push({
+        queue.push({
           type: "output_truncated",
           stream: "stderr",
           originalBytes: stderrBytes,
           keptBytes: maxOutputBytes,
         });
         if (keptFromChunk.length > 0) {
-          collectedEvents.push({
+          queue.push({
             type: "chunk",
             content: keptFromChunk,
             stream: "stderr",
@@ -137,18 +135,11 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
         }
       } else {
         stderrContent += chunk;
-        collectedEvents.push({
+        queue.push({
           type: "chunk",
           content: chunk,
           stream: "stderr",
         });
-      }
-    } else {
-      const lastTruncated = collectedEvents.find(
-        (e) => e.type === "output_truncated" && e.stream === "stderr",
-      );
-      if (lastTruncated && lastTruncated.type === "output_truncated") {
-        lastTruncated.originalBytes = stderrBytes;
       }
     }
   });
@@ -185,42 +176,35 @@ export async function* spawnCliAgent(options: SpawnOptions): AsyncGenerator<Agen
     }
   }
 
-  // Wait for process to close (or error if spawn fails entirely)
-  const { exitCode } = await new Promise<{
-    exitCode: number | null;
-  }>((resolve) => {
-    let resolved = false;
-    child.on("close", (code) => {
-      if (!resolved) {
-        resolved = true;
-        resolve({ exitCode: code });
-      }
-    });
-    child.on("error", () => {
-      // If close never fires (e.g., ENOENT), resolve with null exit code
-      // Give close a short time to fire; if it does, we use that instead
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          resolve({ exitCode: null });
-        }
-      }, 100);
-    });
+  // End the queue when the process closes.
+  // Node guarantees all stdio data events fire before close.
+  let exitCode: number | null = null;
+
+  child.on("close", (code) => {
+    exitCode = code;
+    queue.end();
   });
 
+  // If spawn fails entirely (e.g., ENOENT) and close never fires, end after a short delay
+  child.on("error", () => {
+    setTimeout(() => {
+      queue.end(); // idempotent if close already fired
+    }, 100);
+  });
+
+  // Stream chunks as they arrive
+  for await (const event of queue) {
+    yield event;
+  }
+
   // Clean up timers and listeners
-  if (timeoutTimer) clearTimeout(timeoutTimer);
+  clearTimeout(timeoutTimer);
   if (killTimer) clearTimeout(killTimer);
   if (signal) {
     signal.removeEventListener("abort", onAbort);
   }
 
   const durationMs = Date.now() - startTime;
-
-  // Yield all collected chunk and truncation events
-  for (const event of collectedEvents) {
-    yield event;
-  }
 
   // Yield final event based on outcome
   if (killedByTimeout || killedByAbort) {
