@@ -17,6 +17,7 @@ const HELP_TEXT = `
 Available commands:
   /help              Show this help message
   /exit              Exit the session
+  /stop              Interrupt active deliberation
   /status            Show session status
   /transcript        Print the session transcript
   /refresh-context   Rebuild the context pack from the target folder
@@ -33,6 +34,43 @@ export async function runInteractive(options: InteractiveOptions): Promise<void>
   let deliberating = false;
   let abortController: AbortController | undefined;
 
+  // Pending resolve for the idle-mode input promise
+  let lineResolve: ((line: string | null) => void) | undefined;
+  // Buffer for lines that arrive between waitForInput() calls
+  const lineQueue: string[] = [];
+
+  // Continuous line listener — routes input based on state
+  rl.on("line", (line: string) => {
+    if (deliberating) {
+      const trimmed = line.trim();
+      if (trimmed === "") return;
+      const cmd = trimmed.split(/\s+/)[0]!.toLowerCase();
+      if (cmd === "/stop") {
+        if (abortController) abortController.abort();
+      } else {
+        console.log("Deliberation in progress. Type /stop to interrupt.");
+      }
+      return;
+    }
+
+    // Idle: deliver to the waiting prompt or buffer
+    if (lineResolve) {
+      const resolve = lineResolve;
+      lineResolve = undefined;
+      resolve(line);
+    } else {
+      lineQueue.push(line);
+    }
+  });
+
+  rl.once("close", () => {
+    if (lineResolve) {
+      const resolve = lineResolve;
+      lineResolve = undefined;
+      resolve(null);
+    }
+  });
+
   // Handle Ctrl+C
   process.on("SIGINT", () => {
     if (deliberating && abortController) {
@@ -44,14 +82,19 @@ export async function runInteractive(options: InteractiveOptions): Promise<void>
     }
   });
 
-  const prompt = (): Promise<string | null> =>
+  const waitForInput = (): Promise<string | null> =>
     new Promise((resolve) => {
-      rl.question("You: ", (answer) => resolve(answer));
-      rl.once("close", () => resolve(null));
+      // Drain buffer first
+      if (lineQueue.length > 0) {
+        resolve(lineQueue.shift()!);
+        return;
+      }
+      lineResolve = resolve;
+      process.stdout.write("You: ");
     });
 
   while (true) {
-    const input = await prompt();
+    const input = await waitForInput();
 
     // Ctrl+D / EOF
     if (input === null) {
@@ -96,6 +139,11 @@ export async function runInteractive(options: InteractiveOptions): Promise<void>
         case "/transcript": {
           const md = generateTranscriptMarkdown(session.events, session.meta.id);
           console.log(md);
+          continue;
+        }
+
+        case "/stop": {
+          console.log("No active deliberation to stop.");
           continue;
         }
 
