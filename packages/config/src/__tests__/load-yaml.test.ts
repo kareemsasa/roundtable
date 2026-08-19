@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { loadYamlConfig, loadConfigFiles } from "../load-yaml.js";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { loadYamlConfig, loadConfigFiles, defaultGlobalConfigPath } from "../load-yaml.js";
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { tmpdir, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
 
 describe("loadYamlConfig", () => {
@@ -80,10 +80,17 @@ deliberation:
 
 describe("loadConfigFiles", () => {
   let projectDir: string;
+  let globalConfigPath: string;
 
   beforeEach(async () => {
     projectDir = join(tmpdir(), `rt-project-${randomUUID()}`);
     await mkdir(projectDir, { recursive: true });
+    // Isolate from any real ~/.config/wardroom/config.yaml
+    globalConfigPath = join(tmpdir(), `rt-global-${randomUUID()}`, "config.yaml");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("loads wardroom.config.yaml from project dir", async () => {
@@ -95,7 +102,7 @@ describe("loadConfigFiles", () => {
       "utf-8",
     );
 
-    const { projectConfig } = await loadConfigFiles(projectDir);
+    const { projectConfig } = await loadConfigFiles(projectDir, globalConfigPath);
     expect(projectConfig.context?.budgetBytes).toBe(75000);
   });
 
@@ -109,7 +116,7 @@ describe("loadConfigFiles", () => {
       "utf-8",
     );
 
-    const { projectConfig } = await loadConfigFiles(projectDir);
+    const { projectConfig } = await loadConfigFiles(projectDir, globalConfigPath);
     expect(projectConfig.deliberation?.maxRounds).toBe(5);
   });
 
@@ -130,18 +137,64 @@ describe("loadConfigFiles", () => {
       "utf-8",
     );
 
-    const { projectConfig } = await loadConfigFiles(projectDir);
+    const { projectConfig } = await loadConfigFiles(projectDir, globalConfigPath);
     expect(projectConfig.context?.budgetBytes).toBe(60000);
   });
 
   it("returns empty config when no files exist", async () => {
-    const { globalConfig, projectConfig } = await loadConfigFiles(projectDir);
+    const { globalConfig, projectConfig } = await loadConfigFiles(projectDir, globalConfigPath);
     expect(Object.keys(globalConfig).length).toBe(0);
     expect(Object.keys(projectConfig).length).toBe(0);
   });
 
   it("returns empty project config when no targetPath given", async () => {
-    const { projectConfig } = await loadConfigFiles();
+    const { projectConfig } = await loadConfigFiles(undefined, globalConfigPath);
     expect(Object.keys(projectConfig).length).toBe(0);
+  });
+
+  it("loads the global config from an explicit path", async () => {
+    await mkdir(dirname(globalConfigPath), { recursive: true });
+    await writeFile(
+      globalConfigPath,
+      `deliberation:
+  maxRounds: 7
+`,
+      "utf-8",
+    );
+
+    const { globalConfig } = await loadConfigFiles(projectDir, globalConfigPath);
+    expect(globalConfig.deliberation?.maxRounds).toBe(7);
+  });
+
+  it("resolves the default global path from XDG_CONFIG_HOME when set", async () => {
+    const configHome = join(tmpdir(), `rt-xdg-${randomUUID()}`);
+    vi.stubEnv("XDG_CONFIG_HOME", configHome);
+    await mkdir(join(configHome, "wardroom"), { recursive: true });
+    await writeFile(
+      join(configHome, "wardroom", "config.yaml"),
+      `context:
+  maxFiles: 12
+`,
+      "utf-8",
+    );
+
+    const { globalConfig } = await loadConfigFiles(projectDir);
+    expect(globalConfig.context?.maxFiles).toBe(12);
+  });
+});
+
+describe("defaultGlobalConfigPath", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("uses XDG_CONFIG_HOME when set", () => {
+    vi.stubEnv("XDG_CONFIG_HOME", "/custom/config");
+    expect(defaultGlobalConfigPath()).toBe(join("/custom/config", "wardroom", "config.yaml"));
+  });
+
+  it("falls back to ~/.config when XDG_CONFIG_HOME is unset", () => {
+    vi.stubEnv("XDG_CONFIG_HOME", "");
+    expect(defaultGlobalConfigPath()).toBe(join(homedir(), ".config", "wardroom", "config.yaml"));
   });
 });

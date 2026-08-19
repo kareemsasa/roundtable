@@ -30,20 +30,31 @@ export async function loadYamlConfig(filePath: string): Promise<PartialConfig | 
 }
 
 /**
+ * Default location of the global config file:
+ * $XDG_CONFIG_HOME/wardroom/config.yaml, falling back to ~/.config.
+ */
+export function defaultGlobalConfigPath(): string {
+  const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+  return join(configHome, "wardroom", "config.yaml");
+}
+
+/**
  * Discover and load config files from disk.
  * Returns { globalConfig, projectConfig } ready for resolveConfig().
  *
  * Search order:
- * - Global: ~/.config/wardroom/config.yaml
+ * - Global: globalConfigPath, defaulting to $XDG_CONFIG_HOME/wardroom/config.yaml
+ *   (~/.config/wardroom/config.yaml when XDG_CONFIG_HOME is unset)
  * - Project: wardroom.config.yaml or .wardroom/config.yaml in targetPath
  */
-export async function loadConfigFiles(targetPath?: string): Promise<{
+export async function loadConfigFiles(
+  targetPath?: string,
+  globalConfigPath: string = defaultGlobalConfigPath(),
+): Promise<{
   globalConfig: PartialConfig;
   projectConfig: PartialConfig;
 }> {
-  // Global config
-  const globalPath = join(homedir(), ".config", "wardroom", "config.yaml");
-  const globalConfig = (await loadYamlConfig(globalPath)) ?? {};
+  const globalConfig = (await loadYamlConfig(globalConfigPath)) ?? {};
 
   // Project config — try two locations
   let projectConfig: PartialConfig = {};
