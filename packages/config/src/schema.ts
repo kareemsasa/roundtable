@@ -19,6 +19,7 @@ export const AdapterConfigSchema = z.object({
   command: z.string(),
   mode: z.enum(["read_only", "mock"]),
   limits: AdapterLimitsSchema,
+  model: z.string().optional(),
 });
 
 export const DeliberationLimitsSchema = z.object({

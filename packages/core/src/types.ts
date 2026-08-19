@@ -160,6 +160,8 @@ export type AdapterConfig = {
   command: string;
   mode: AdapterMode;
   limits: AdapterLimits;
+  /** Optional model override passed to the underlying CLI (e.g. Codex `-m`). */
+  model?: string;
 };
 
 export type DeliberationLimits = {

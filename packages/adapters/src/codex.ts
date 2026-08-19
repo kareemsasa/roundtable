@@ -33,6 +33,10 @@ export class CodexAdapter implements AgentAdapter {
           "--skip-git-repo-check",
           "--cd",
           cwd,
+          // The adapter ignores user config for reproducibility, so the model
+          // must be supplied explicitly or Codex falls back to its built-in
+          // default — which may be unavailable for the user's account.
+          ...(this.config.model ? ["-m", this.config.model] : []),
           "--json",
           "-", // read prompt from stdin
         ],
@@ -52,6 +56,13 @@ export class CodexAdapter implements AgentAdapter {
         } else if (event.type === "response_end") {
           const cleaned = extractCodexResponse(event.content);
           yield { ...event, content: cleaned };
+        } else if (event.type === "error") {
+          // Codex reports model/API failures as JSONL error events on stdout,
+          // exits non-zero, and leaves stderr empty — which would otherwise
+          // surface as a bare "Process exited with code N". Recover the real
+          // message so the failure is loud and actionable.
+          const detail = extractCodexError(event.stdout);
+          yield detail ? { ...event, error: detail } : event;
         } else {
           yield event;
         }
@@ -99,6 +110,47 @@ function extractCodexResponse(rawOutput: string): string {
   // If we found structured response text, use it; otherwise fall back to raw output
   const content = texts.length > 0 ? texts.join("\n") : rawOutput;
   return stripSelfLabel(content);
+}
+
+/**
+ * Extract a human-readable error message from Codex --json JSONL output.
+ *
+ * On failure Codex emits events like:
+ *   {"type":"error","message":"..."}
+ *   {"type":"turn.failed","error":{"message":"..."}}
+ *
+ * The message itself is sometimes a JSON-encoded API error envelope; unwrap one
+ * level so the surfaced text is the underlying message rather than raw JSON.
+ * Returns null when no error message can be found.
+ */
+function extractCodexError(rawOutput: string | undefined): string | null {
+  if (!rawOutput) return null;
+
+  for (const line of rawOutput.trim().split("\n")) {
+    let event: unknown;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (typeof event !== "object" || event === null) continue;
+    const e = event as { type?: string; message?: string; error?: { message?: string } };
+
+    let message: string | undefined;
+    if (e.type === "error") message = e.message;
+    else if (e.type === "turn.failed") message = e.error?.message;
+    if (!message) continue;
+
+    // The message may itself be a JSON-encoded error envelope.
+    try {
+      const inner = JSON.parse(message) as { error?: { message?: string }; message?: string };
+      return inner.error?.message ?? inner.message ?? message;
+    } catch {
+      return message;
+    }
+  }
+
+  return null;
 }
 
 /**

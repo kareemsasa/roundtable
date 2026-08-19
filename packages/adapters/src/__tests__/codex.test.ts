@@ -278,6 +278,75 @@ process.stdin.on("end", () => {
     }
   });
 
+  it("includes -m <model> in args when config.model is set", async () => {
+    const fakeCmd = await createFakeCodex(tmpBase, "echo");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(
+      makeAdapterConfig({ command: fakeCmd, model: "gpt-5.5" }),
+      dataDir,
+    );
+
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    const metadata = events.find((e) => e.type === "invocation_metadata");
+    expect(metadata).toBeDefined();
+    if (metadata?.type === "invocation_metadata") {
+      const mIndex = metadata.args.indexOf("-m");
+      expect(mIndex).toBeGreaterThanOrEqual(0);
+      expect(metadata.args[mIndex + 1]).toBe("gpt-5.5");
+    }
+  });
+
+  it("omits -m from args when config.model is not set", async () => {
+    const fakeCmd = await createFakeCodex(tmpBase, "echo");
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: fakeCmd }), dataDir);
+
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    const metadata = events.find((e) => e.type === "invocation_metadata");
+    expect(metadata).toBeDefined();
+    if (metadata?.type === "invocation_metadata") {
+      expect(metadata.args).not.toContain("-m");
+    }
+  });
+
+  it("surfaces JSONL error message when codex exits non-zero with empty stderr", async () => {
+    // Codex reports model/API errors as a JSONL event on stdout, exits non-zero,
+    // and writes nothing to stderr. The real message must reach the error event
+    // instead of a bare "Process exited with code 1".
+    const scriptPath = join(tmpBase, "fake-codex-jsonl-error");
+    const script = `#!/usr/bin/env node
+process.stdin.resume();
+process.stdin.on("end", () => {
+  process.stdout.write('{"type":"thread.started","thread_id":"x"}\\n');
+  process.stdout.write('{"type":"turn.started"}\\n');
+  process.stdout.write('{"type":"error","message":"The model gpt-5.3-codex is not supported with a ChatGPT account."}\\n');
+  process.stdout.write('{"type":"turn.failed","error":{"message":"The model gpt-5.3-codex is not supported with a ChatGPT account."}}\\n');
+  process.exit(1);
+});
+`;
+    await writeFile(scriptPath, script, { mode: 0o755 });
+
+    const dataDir = join(tmpBase, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    const adapter = new CodexAdapter(makeAdapterConfig({ command: scriptPath }), dataDir);
+
+    const events = await collectEvents(adapter.invoke(makeAgentInput()));
+
+    const errorEvent = events.find((e) => e.type === "error");
+    expect(errorEvent).toBeDefined();
+    if (errorEvent?.type === "error") {
+      expect(errorEvent.error).toContain("not supported");
+      expect(errorEvent.error).not.toBe("Process exited with code 1");
+    }
+  });
+
   it("missing binary produces error event", async () => {
     const dataDir = join(tmpBase, "data");
     await mkdir(dataDir, { recursive: true });
